@@ -54,11 +54,11 @@ if (window.lucide) {
     lucide.createIcons();
 }
 
-// Print Handler (Clears browser header/footer during printing)
+// Print Handler (Hides browser header/footer during printing)
 if (btnPrintPdf) {
     btnPrintPdf.addEventListener('click', () => {
         const origTitle = document.title;
-        document.title = ""; // Hides website title and URL from print header
+        document.title = ""; // Clears the page title from browser print header
         window.print();
         setTimeout(() => {
             document.title = origTitle;
@@ -595,7 +595,6 @@ function escapeHtml(text) {
 
 function renderHtmlWithSuperscripts(text) {
     if (!text) return '';
-    // Format chainages e.g. Km 56+700 -> Km 56<sup class="font-bold text-[10px]">+700</sup>
     const escaped = escapeHtml(text);
     return escaped.replace(/(Km\s+\d+|\d+)(\+\d+)/gi, '$1<sup class="font-bold text-[10px]">$2</sup>');
 }
@@ -682,7 +681,7 @@ function renderGeneralLinesHtml(lines) {
             return `<div class="font-bold mt-1">${esc}</div>`;
         }
         if (/^(- Tuyến:|- Thời gian:|- Đối tượng[^:]*:|- Hành vi[^:]*:|- Tuyên truyền[^:]*:)/.test(l)) {
-            const parts = l.split(':');
+            const parts = esc.split(':');
             if (parts.length >= 2) {
                 return `<div><strong class="font-bold">${escapeHtml(parts[0])}:</strong> ${renderHtmlWithSuperscripts(parts.slice(1).join(':'))}</div>`;
             }
@@ -699,13 +698,52 @@ function renderCol6LinesHtml(lines) {
             return `<div class="font-bold text-slate-950">${esc}</div>`;
         }
         if (/^(- Phương tiện, thiết bị|- Thiết bị|- Phương tiện thông tin|- Vũ khí|- Súng|- Gậy|- Các biểu mẫu|- Cân|- Máy)/.test(l)) {
-            const parts = l.split(':');
+            const parts = esc.split(':');
             if (parts.length >= 2) {
                 return `<div><strong class="font-bold">${escapeHtml(parts[0])}:</strong> ${escapeHtml(parts.slice(1).join(':'))}</div>`;
             }
         }
         return `<div>${esc}</div>`;
     }).join('');
+}
+
+// Strict OpenXML Helpers for Word Document Export (Complies with ISO/IEC 29500 XSD Schema)
+function makeRPr(font = "Times New Roman", bold = false, italic = false, sz = 20, vertAlign = null) {
+    let xml = `<w:rPr><w:rFonts w:ascii="${font}" w:hAnsi="${font}" w:cs="${font}"/>`;
+    if (bold) xml += `<w:b/><w:bCs/>`;
+    if (italic) xml += `<w:i/><w:iCs/>`;
+    xml += `<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/>`;
+    if (vertAlign) xml += `<w:vertAlign w:val="${vertAlign}"/>`;
+    xml += `</w:rPr>`;
+    return xml;
+}
+
+function makePPr(align = "left", spaceAfter = 40, spaceBefore = 0, lineSpacing = 240) {
+    let xml = `<w:pPr><w:spacing w:before="${spaceBefore}" w:after="${spaceAfter}" w:line="${lineSpacing}" w:lineRule="auto"/>`;
+    if (align !== "left") xml += `<w:jc w:val="${align}"/>`;
+    xml += `</w:pPr>`;
+    return xml;
+}
+
+function makeTcPr(widthDxa, vMerge = null, gridSpan = null, shading = null, vAlign = "top", borders = true) {
+    let xml = `<w:tcPr><w:tcW w:w="${widthDxa}" w:type="dxa"/>`;
+    if (gridSpan && gridSpan > 1) xml += `<w:gridSpan w:val="${gridSpan}"/>`;
+    if (vMerge === "restart") xml += `<w:vMerge w:val="restart"/>`;
+    else if (vMerge === "continue") xml += `<w:vMerge/>`;
+
+    if (borders) {
+        xml += `<w:tcBorders>
+            <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+        </w:tcBorders>`;
+    }
+    if (shading) xml += `<w:shd w:val="clear" w:fill="${shading}"/>`;
+    xml += `<w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar>`;
+    if (vAlign) xml += `<w:vAlign w:val="${vAlign}"/>`;
+    xml += `</w:tcPr>`;
+    return xml;
 }
 
 // Export Word Document (.docx)
@@ -718,7 +756,7 @@ btnExportDocx.addEventListener('click', async () => {
     try {
         const zip = new JSZip();
 
-        // [Content_Types].xml
+        // 1. [Content_Types].xml
         const contentTypesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
@@ -728,19 +766,20 @@ btnExportDocx.addEventListener('click', async () => {
   <Override PartName="/word/fontTable.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml"/>
 </Types>`;
 
-        // Root _rels/.rels (Only points to word/document.xml)
+        // 2. Root _rels/.rels (Only points to word/document.xml)
         const rootRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
 </Relationships>`;
 
-        // Document _rels: word/_rels/document.xml.rels (Points to styles.xml and fontTable.xml)
+        // 3. Document _rels: word/_rels/document.xml.rels (Points to styles.xml and fontTable.xml)
         const documentRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
   <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/fontTable" Target="fontTable.xml"/>
 </Relationships>`;
 
+        // 4. word/styles.xml
         const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:docDefaults>
@@ -772,6 +811,7 @@ btnExportDocx.addEventListener('click', async () => {
   </w:style>
 </w:styles>`;
 
+        // 5. word/fontTable.xml
         const fontTableXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:fonts xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:font w:name="Times New Roman">
@@ -785,28 +825,10 @@ btnExportDocx.addEventListener('click', async () => {
         let tableRowsXml = '';
 
         // Header Row 1: "Nội dung"
-        tableRowsXml += `
-        <w:tr>
-            <w:trPr><w:tblHeader/><w:cantSplit/></w:trPr>
-            <w:tc>
-                <w:tcPr>
-                    <w:tcW w:w="15000" w:type="dxa"/>
-                    <w:gridSpan w:val="6"/>
-                    <w:shd w:val="clear" w:fill="D9E1F2"/>
-                    <w:vAlign w:val="center"/>
-                    <w:tcBorders>
-                        <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                        <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                        <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                        <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                    </w:tcBorders>
-                </w:tcPr>
-                <w:p>
-                    <w:pPr><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr>
-                    <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>Nội dung</w:t></w:r>
-                </w:p>
-            </w:tc>
-        </w:tr>`;
+        const r1TcPr = makeTcPr(15000, null, 6, "D9E1F2", "center", true);
+        const r1PPr = makePPr("center", 0, 0, 240);
+        const r1RPr = makeRPr("Times New Roman", true, false, 24);
+        tableRowsXml += `<w:tr><w:trPr><w:tblHeader/><w:cantSplit/></w:trPr><w:tc>${r1TcPr}<w:p>${r1PPr}<w:r>${r1RPr}<w:t>Nội dung</w:t></w:r></w:p></w:tc></w:tr>`;
 
         // Row 2: Headers
         const colHeaders = [
@@ -820,27 +842,13 @@ btnExportDocx.addEventListener('click', async () => {
 
         tableRowsXml += `<w:tr><w:trPr><w:tblHeader/><w:cantSplit/></w:trPr>`;
         colHeaders.forEach(ch => {
-            const linesXml = ch.t.split('\n').map(l => `
-                <w:p>
-                    <w:pPr><w:jc w:val="center"/><w:spacing w:after="20"/></w:pPr>
-                    <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:sz w:val="20"/></w:rPr><w:t>${escapeXml(l)}</w:t></w:r>
-                </w:p>
-            `).join('');
-            tableRowsXml += `
-            <w:tc>
-                <w:tcPr>
-                    <w:tcW w:w="${ch.w}" w:type="dxa"/>
-                    <w:shd w:val="clear" w:fill="F2F2F2"/>
-                    <w:vAlign w:val="center"/>
-                    <w:tcBorders>
-                        <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                        <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                        <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                        <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                    </w:tcBorders>
-                </w:tcPr>
-                ${linesXml}
-            </w:tc>`;
+            const tcPr = makeTcPr(ch.w, null, null, "F2F2F2", "center", true);
+            const linesXml = ch.t.split('\n').map(l => {
+                const pPr = makePPr("center", 20, 0, 240);
+                const rPr = makeRPr("Times New Roman", true, false, 20);
+                return `<w:p>${pPr}<w:r>${rPr}<w:t>${escapeXml(l)}</w:t></w:r></w:p>`;
+            }).join('');
+            tableRowsXml += `<w:tc>${tcPr}${linesXml}</w:tc>`;
         });
         tableRowsXml += `</w:tr>`;
 
@@ -851,59 +859,39 @@ btnExportDocx.addEventListener('click', async () => {
             day.tvTos.forEach((s, idx) => {
                 tableRowsXml += `<w:tr><w:trPr><w:cantSplit/></w:trPr>`;
 
+                // Col 1: Date with vMerge
                 if (idx === 0) {
-                    tableRowsXml += `
-                    <w:tc>
-                        <w:tcPr>
-                            <w:tcW w:w="1300" w:type="dxa"/>
-                            <w:vMerge w:val="restart"/>
-                            <w:vAlign w:val="center"/>
-                            <w:tcBorders>
-                                <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                                <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                                <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                                <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                            </w:tcBorders>
-                        </w:tcPr>
-                        <w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="20"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:sz w:val="22"/></w:rPr><w:t>${escapeXml(day.day)}</w:t></w:r></w:p>
-                        <w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:sz w:val="20"/></w:rPr><w:t>${escapeXml(day.date)}</w:t></w:r></w:p>
-                    </w:tc>`;
+                    const tcPr = makeTcPr(1300, "restart", null, null, "center", true);
+                    const p1Pr = makePPr("center", 20, 0, 240);
+                    const r1Pr = makeRPr("Times New Roman", true, false, 22);
+                    const p2Pr = makePPr("center", 0, 0, 240);
+                    const r2Pr = makeRPr("Times New Roman", true, false, 20);
+                    tableRowsXml += `<w:tc>${tcPr}<w:p>${p1Pr}<w:r>${r1Pr}<w:t>${escapeXml(day.day)}</w:t></w:r></w:p><w:p>${p2Pr}<w:r>${r2Pr}<w:t>${escapeXml(day.date)}</w:t></w:r></w:p></w:tc>`;
                 } else {
-                    tableRowsXml += `
-                    <w:tc>
-                        <w:tcPr>
-                            <w:tcW w:w="1300" w:type="dxa"/>
-                            <w:vMerge/>
-                            <w:vAlign w:val="center"/>
-                            <w:tcBorders>
-                                <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                                <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                                <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                                <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                            </w:tcBorders>
-                        </w:tcPr>
-                        <w:p><w:pPr><w:spacing w:after="0"/></w:pPr></w:p>
-                    </w:tc>`;
+                    const tcPr = makeTcPr(1300, "continue", null, null, "center", true);
+                    const pPr = makePPr("left", 0, 0, 240);
+                    tableRowsXml += `<w:tc>${tcPr}<w:p>${pPr}</w:p></w:tc>`;
                 }
 
-                tableRowsXml += makeXmlCol2(s.col2Lines, 2200, 22);
-                tableRowsXml += makeXmlGeneral(s.col3Lines, 1300, 20);
-                tableRowsXml += makeXmlWithSuperscript(s.col4Lines, 3600, 20);
-                tableRowsXml += makeXmlGeneral(s.col5Lines, 2900, 20);
-                tableRowsXml += makeXmlCol6(s.col6Lines, 3700, 20);
+                tableRowsXml += makeDocxXmlCol2(s.col2Lines, 2200, 22);
+                tableRowsXml += makeDocxXmlGeneral(s.col3Lines, 1300, 20);
+                tableRowsXml += makeDocxXmlWithSuperscript(s.col4Lines, 3600, 20);
+                tableRowsXml += makeDocxXmlGeneral(s.col5Lines, 2900, 20);
+                tableRowsXml += makeDocxXmlCol6(s.col6Lines, 3700, 20);
 
                 tableRowsXml += `</w:tr>`;
             });
         });
 
+        // 6. word/document.xml
         const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <w:body>
     <w:p>
-        <w:pPr><w:jc w:val="right"/><w:spacing w:after="100"/></w:pPr>
-        <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:sz w:val="20"/></w:rPr><w:t>Mẫu số 03/TT</w:t></w:r>
-        <w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:br/></w:r>
-        <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:i/><w:sz w:val="18"/></w:rPr><w:t>(Kèm theo Thông tư số 14/2025/TT-BCA ngày 28/02/2025 của Bộ trưởng Bộ Công an)</w:t></w:r>
+        ${makePPr("right", 100, 0, 240)}
+        <w:r>${makeRPr("Times New Roman", true, false, 20)}<w:t>Mẫu số 03/TT</w:t></w:r>
+        <w:r><w:rPr><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:br/></w:r>
+        <w:r>${makeRPr("Times New Roman", false, true, 18)}<w:t>(Kèm theo Thông tư số 14/2025/TT-BCA ngày 28/02/2025 của Bộ trưởng Bộ Công an)</w:t></w:r>
     </w:p>
     <w:tbl>
         <w:tblPr>
@@ -916,28 +904,28 @@ btnExportDocx.addEventListener('click', async () => {
         <w:tr>
             <w:tc>
                 <w:tcPr><w:tcW w:w="7000" w:type="dxa"/></w:tcPr>
-                <w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="40"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:sz w:val="24"/></w:rPr><w:t>PHÒNG CẢNH SÁT GIAO THÔNG</w:t></w:r></w:p>
-                <w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="40"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>ĐỘI CẢNH SÁT GIAO THÔNG\nĐƯỜNG BỘ</w:t></w:r></w:p>
+                <w:p>${makePPr("center", 40, 0, 240)}<w:r>${makeRPr("Times New Roman", false, false, 24)}<w:t>PHÒNG CẢNH SÁT GIAO THÔNG</w:t></w:r></w:p>
+                <w:p>${makePPr("center", 40, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>ĐỘI CẢNH SÁT GIAO THÔNG\nĐƯỜNG BỘ</w:t></w:r></w:p>
             </w:tc>
             <w:tc>
                 <w:tcPr><w:tcW w:w="8000" w:type="dxa"/></w:tcPr>
-                <w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="40"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</w:t></w:r></w:p>
-                <w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="60"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>Độc lập - Tự do - Hạnh phúc</w:t></w:r></w:p>
-                <w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="40"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:i/><w:sz w:val="22"/></w:rPr><w:t>Vĩnh Long, ngày 28 tháng 9 năm 2026</w:t></w:r></w:p>
+                <w:p>${makePPr("center", 40, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</w:t></w:r></w:p>
+                <w:p>${makePPr("center", 60, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>Độc lập - Tự do - Hạnh phúc</w:t></w:r></w:p>
+                <w:p>${makePPr("center", 40, 0, 240)}<w:r>${makeRPr("Times New Roman", false, true, 22)}<w:t>Vĩnh Long, ngày 28 tháng 9 năm 2026</w:t></w:r></w:p>
             </w:tc>
         </w:tr>
     </w:tbl>
     <w:p>
-        <w:pPr><w:jc w:val="center"/><w:spacing w:before="150" w:after="40"/></w:pPr>
-        <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:sz w:val="30"/></w:rPr><w:t>KẾ HOẠCH CÔNG TÁC TUẦN</w:t></w:r>
+        ${makePPr("center", 40, 150, 240)}
+        <w:r>${makeRPr("Times New Roman", true, false, 30)}<w:t>KẾ HOẠCH CÔNG TÁC TUẦN</w:t></w:r>
     </w:p>
     <w:p>
-        <w:pPr><w:jc w:val="center"/><w:spacing w:after="150"/></w:pPr>
-        <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:i/><w:sz w:val="24"/></w:rPr><w:t>(Từ ngày 28/9/2026 đến ngày 04/10/2026)</w:t></w:r>
+        ${makePPr("center", 150, 0, 240)}
+        <w:r>${makeRPr("Times New Roman", true, true, 24)}<w:t>(Từ ngày 28/9/2026 đến ngày 04/10/2026)</w:t></w:r>
     </w:p>
     <w:p>
-        <w:pPr><w:jc w:val="both"/><w:spacing w:after="150" w:line="260" w:lineRule="auto"/></w:pPr>
-        <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:sz w:val="22"/></w:rPr><w:t>1. Thực hiện Kế hoạch số 121/KH-PC08 ngày 22/10/2024 của Phòng PC08, Công an tỉnh Vĩnh Long về thực hiện cao điểm tổng rà soát, phát hiện, thống kê người điều khiển phương tiện mà trong cơ thể có chất ma túy; các điểm, tụ điểm phức tạp về ma túy và đấu tranh, phòng chống tội phạm về ma túy của lực lượng Cảnh sát giao thông trên địa bàn tỉnh; Kế hoạch số 2487/KH-CAT ngày 30/12/2025 của Công an tỉnh về huy động lực lượng khác trong Công an tỉnh phối hợp tuần tra, kiểm soát bảo đảm trật tự, an toàn giao thông đường bộ; Kế hoạch 22/KH-PC08 ngày 18/3/2026 của Phòng PC08 về việc tuần tra, kiểm tra, kiểm soát, xử lý các chuyên đề vi phạm là nguyên nhân chính gây tai nạn giao thông trên các tuyến giao thông đường bộ; Kế hoạch số 166/KH-PC08 ngày 09/6/2026 của Phòng PC08 về việc thực hiện cao điểm phối hợp tuyên truyền, tấn công trấn áp tội phạm về ma tuý giữa Việt Nam, Trung Quốc, Lào và Myanmar trên các tuyến giao thông của lực lượng Cảnh sát giao thông; Kế hoạch số 399/KH-CAT-PC08 ngày 25/8/2026 của Công an tỉnh về tổng kiểm soát, xử lý vi phạm về trật tự an toàn giao thông đường bộ đối với phương tiện kinh doanh vận tải trên địa bàn tỉnh; Kế hoạch số 197/KH-PC08 ngày 14/9/2026 của Phòng PC08 về việc phối hợp tuần tra, kiểm soát phòng, chống đua xe trái phép và phòng chống các loại tội phạm hoạt động theo các tuyến giao thông trên địa bàn tỉnh; Căn cứ kết quả công tác điều tra cơ bản tuyến, điều tra, giải quyết tai nạn giao thông, kết quả xử lý vi phạm giao thông, tình hình trật tự, an toàn giao thông, trật tự xã hội, vi phạm giao thông nổi lên từ ngày 21/9/2026 đến ngày 27/9/2026, Đội Cảnh sát giao thông đường bộ xây dựng kế hoạch công tác tuần như sau:</w:t></w:r>
+        ${makePPr("both", 150, 0, 260)}
+        <w:r>${makeRPr("Times New Roman", false, false, 22)}<w:t>1. Thực hiện Kế hoạch số 121/KH-PC08 ngày 22/10/2024 của Phòng PC08, Công an tỉnh Vĩnh Long về thực hiện cao điểm tổng rà soát, phát hiện, thống kê người điều khiển phương tiện mà trong cơ thể có chất ma túy; các điểm, tụ điểm phức tạp về ma túy và đấu tranh, phòng chống tội phạm về ma túy của lực lượng Cảnh sát giao thông trên địa bàn tỉnh; Kế hoạch số 2487/KH-CAT ngày 30/12/2025 của Công an tỉnh về huy động lực lượng khác trong Công an tỉnh phối hợp tuần tra, kiểm soát bảo đảm trật tự, an toàn giao thông đường bộ; Kế hoạch 22/KH-PC08 ngày 18/3/2026 của Phòng PC08 về việc tuần tra, kiểm tra, kiểm soát, xử lý các chuyên đề vi phạm là nguyên nhân chính gây tai nạn giao thông trên các tuyến giao thông đường bộ; Kế hoạch số 166/KH-PC08 ngày 09/6/2026 của Phòng PC08 về việc thực hiện cao điểm phối hợp tuyên truyền, tấn công trấn áp tội phạm về ma tuý giữa Việt Nam, Trung Quốc, Lào và Myanmar trên các tuyến giao thông của lực lượng Cảnh sát giao thông; Kế hoạch số 399/KH-CAT-PC08 ngày 25/8/2026 của Công an tỉnh về tổng kiểm soát, xử lý vi phạm về trật tự an toàn giao thông đường bộ đối với phương tiện kinh doanh vận tải trên địa bàn tỉnh; Kế hoạch số 197/KH-PC08 ngày 14/9/2026 của Phòng PC08 về việc phối hợp tuần tra, kiểm soát phòng, chống đua xe trái phép và phòng chống các loại tội phạm hoạt động theo các tuyến giao thông trên địa bàn tỉnh; Căn cứ kết quả công tác điều tra cơ bản tuyến, điều tra, giải quyết tai nạn giao thông, kết quả xử lý vi phạm giao thông, tình hình trật tự, an toàn giao thông, trật tự xã hội, vi phạm giao thông nổi lên từ ngày 21/9/2026 đến ngày 27/9/2026, Đội Cảnh sát giao thông đường bộ xây dựng kế hoạch công tác tuần như sau:</w:t></w:r>
     </w:p>
     <w:tbl>
         <w:tblPr>
@@ -953,22 +941,22 @@ btnExportDocx.addEventListener('click', async () => {
             </w:tblBorders>
         </w:tblPr>
         <w:tblGrid>
-            <w:gridCol w:w="{col_widths[0]}"/>
-            <w:gridCol w:w="{col_widths[1]}"/>
-            <w:gridCol w:w="{col_widths[2]}"/>
-            <w:gridCol w:w="{col_widths[3]}"/>
-            <w:gridCol w:w="{col_widths[4]}"/>
-            <w:gridCol w:w="{col_widths[5]}"/>
+            <w:gridCol w:w="1300"/>
+            <w:gridCol w:w="2200"/>
+            <w:gridCol w:w="1300"/>
+            <w:gridCol w:w="3600"/>
+            <w:gridCol w:w="2900"/>
+            <w:gridCol w:w="3700"/>
         </w:tblGrid>
         ${tableRowsXml}
     </w:tbl>
     <w:p>
-        <w:pPr><w:spacing w:before="150" w:after="40"/></w:pPr>
-        <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>2. Thực hiện yêu cầu, nhiệm vụ khác của Trưởng phòng (nếu có):</w:t></w:r>
+        ${makePPr("left", 40, 150, 240)}
+        <w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>2. Thực hiện yêu cầu, nhiệm vụ khác của Trưởng phòng (nếu có):</w:t></w:r>
     </w:p>
     <w:p>
-        <w:pPr><w:spacing w:after="150"/></w:pPr>
-        <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:sz w:val="22"/></w:rPr><w:t>Tùy theo tình hình thực tế giao cho chỉ huy Đội Cảnh sát giao thông đường bộ báo cáo Lãnh đạo phòng thay đổi tuyến, địa bàn, thời gian, lực lượng, phương tiện, thiết bị kỹ thuật nghiệp vụ, công cụ hỗ trợ và các điều kiện khác trong kế hoạch ngày cho phù hợp.</w:t></w:r>
+        ${makePPr("left", 150, 0, 240)}
+        <w:r>${makeRPr("Times New Roman", false, false, 22)}<w:t>Tùy theo tình hình thực tế giao cho chỉ huy Đội Cảnh sát giao thông đường bộ báo cáo Lãnh đạo phòng thay đổi tuyến, địa bàn, thời gian, lực lượng, phương tiện, thiết bị kỹ thuật nghiệp vụ, công cụ hỗ trợ và các điều kiện khác trong kế hoạch ngày cho phù hợp.</w:t></w:r>
     </w:p>
     <w:tbl>
         <w:tblPr>
@@ -981,22 +969,22 @@ btnExportDocx.addEventListener('click', async () => {
         <w:tr>
             <w:tc>
                 <w:tcPr><w:tcW w:w="5000" w:type="dxa"/></w:tcPr>
-                <w:p><w:pPr><w:spacing w:after="20"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:i/><w:sz w:val="22"/></w:rPr><w:t>Nơi nhận:</w:t></w:r></w:p>
-                <w:p><w:pPr><w:spacing w:after="10"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:sz w:val="20"/></w:rPr><w:t>- Đ/c Trưởng phòng (để chỉ đạo);</w:t></w:r></w:p>
-                <w:p><w:pPr><w:spacing w:after="10"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:sz w:val="20"/></w:rPr><w:t>- Đ/c PTP phụ trách (để chỉ đạo);</w:t></w:r></w:p>
-                <w:p><w:pPr><w:spacing w:after="10"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:sz w:val="20"/></w:rPr><w:t>- PC02, PC06, PK02, CAX (để p/h thực hiện);</w:t></w:r></w:p>
-                <w:p><w:pPr><w:spacing w:after="10"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:sz w:val="20"/></w:rPr><w:t>- Lưu: Đội CSGTĐB, VT.</w:t></w:r></w:p>
+                <w:p>${makePPr("left", 20, 0, 240)}<w:r>${makeRPr("Times New Roman", true, true, 22)}<w:t>Nơi nhận:</w:t></w:r></w:p>
+                <w:p>${makePPr("left", 10, 0, 240)}<w:r>${makeRPr("Times New Roman", false, false, 20)}<w:t>- Đ/c Trưởng phòng (để chỉ đạo);</w:t></w:r></w:p>
+                <w:p>${makePPr("left", 10, 0, 240)}<w:r>${makeRPr("Times New Roman", false, false, 20)}<w:t>- Đ/c PTP phụ trách (để chỉ đạo);</w:t></w:r></w:p>
+                <w:p>${makePPr("left", 10, 0, 240)}<w:r>${makeRPr("Times New Roman", false, false, 20)}<w:t>- PC02, PC06, PK02, CAX (để p/h thực hiện);</w:t></w:r></w:p>
+                <w:p>${makePPr("left", 10, 0, 240)}<w:r>${makeRPr("Times New Roman", false, false, 20)}<w:t>- Lưu: Đội CSGTĐB, VT.</w:t></w:r></w:p>
             </w:tc>
             <w:tc>
                 <w:tcPr><w:tcW w:w="5000" w:type="dxa"/></w:tcPr>
-                <w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="800"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>ĐỘI TRƯỞNG</w:t></w:r></w:p>
-                <w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>Thượng tá Trần Văn Tiếp</w:t></w:r></w:p>
+                <w:p>${makePPr("center", 800, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>ĐỘI TRƯỞNG</w:t></w:r></w:p>
+                <w:p>${makePPr("center", 0, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>Thượng tá Trần Văn Tiếp</w:t></w:r></w:p>
             </w:tc>
             <w:tc>
                 <w:tcPr><w:tcW w:w="5000" w:type="dxa"/></w:tcPr>
-                <w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="20"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>KT. TRƯỞNG PHÒNG</w:t></w:r></w:p>
-                <w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="800"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>PHÓ TRƯỞNG PHÒNG</w:t></w:r></w:p>
-                <w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>Thượng tá Nguyễn Ngọc Ân</w:t></w:r></w:p>
+                <w:p>${makePPr("center", 20, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>KT. TRƯỞNG PHÒNG</w:t></w:r></w:p>
+                <w:p>${makePPr("center", 800, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>PHÓ TRƯỞNG PHÒNG</w:t></w:r></w:p>
+                <w:p>${makePPr("center", 0, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>Thượng tá Nguyễn Ngọc Ân</w:t></w:r></w:p>
             </w:tc>
         </w:tr>
     </w:tbl>
@@ -1030,133 +1018,82 @@ btnExportDocx.addEventListener('click', async () => {
     }
 });
 
-function escapeXml(unsafe) {
-    if (!unsafe) return '';
-    return unsafe.replace(/[<>&'"]/g, (c) => {
-        switch (c) {
-            case '<': return '&lt;';
-            case '>': return '&gt;';
-            case '&': return '&amp;';
-            case '\'': return '&apos;';
-            case '"': return '&quot;';
-        }
-    });
-}
-
-function makeXmlCol2(lines, widthDxa, fontSize = 22) {
+function makeDocxXmlCol2(lines, widthDxa, fontSize = 22) {
     if (!lines || lines.length === 0) {
-        return `<w:tc><w:tcPr><w:tcW w:w="${widthDxa}" w:type="dxa"/><w:vAlign w:val="top"/><w:tcBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/></w:tcBorders></w:tcPr><w:p><w:pPr><w:spacing w:after="0"/></w:pPr></w:p></w:tc>`;
+        const tcPr = makeTcPr(widthDxa, null, null, null, "top", true);
+        const pPr = makePPr("left", 0, 0, 240);
+        return `<w:tc>${tcPr}<w:p>${pPr}</w:p></w:tc>`;
     }
+
+    const tcPr = makeTcPr(widthDxa, null, null, null, "top", true);
     const parasXml = lines.map(l => {
         l = l.trim();
+        const pPr = makePPr("left", 30, 0, 240);
+
         if (/^Tổ\s+\d+/i.test(l)) {
-            return `
-            <w:p>
-                <w:pPr><w:spacing w:after="30"/></w:pPr>
-                <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:sz w:val="${fontSize}"/></w:rPr><w:t>${escapeXml(l)}</w:t></w:r>
-            </w:p>`;
+            const rPr = makeRPr("Times New Roman", true, false, fontSize);
+            return `<w:p>${pPr}<w:r>${rPr}<w:t>${escapeXml(l)}</w:t></w:r></w:p>`;
         }
 
         if (l === 'Tổ trưởng' || l === 'Tổ viên' || l === 'Tổ  viên' || l === 'Tổ phó') {
-            return `
-            <w:p>
-                <w:pPr><w:spacing w:after="30"/></w:pPr>
-                <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:sz w:val="${fontSize}"/></w:rPr><w:t>${escapeXml(l)}</w:t></w:r>
-            </w:p>`;
+            const rPr = makeRPr("Times New Roman", false, false, fontSize);
+            return `<w:p>${pPr}<w:r>${rPr}<w:t>${escapeXml(l)}</w:t></w:r></w:p>`;
         }
 
         const m = l.match(/^(.*?)(Tổ\s+trưởng|Tổ\s+viên|Tổ\s+phó)$/i);
         if (m) {
             const namePart = m[1].trim();
             const rolePart = m[2].trim();
-            return `
-            <w:p>
-                <w:pPr><w:spacing w:after="30"/></w:pPr>
-                <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:sz w:val="${fontSize}"/></w:rPr><w:t>${escapeXml(namePart)} </w:t></w:r>
-                <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:sz w:val="${fontSize}"/></w:rPr><w:t>${escapeXml(rolePart)}</w:t></w:r>
-            </w:p>`;
+            const r1Pr = makeRPr("Times New Roman", true, false, fontSize);
+            const r2Pr = makeRPr("Times New Roman", false, false, fontSize);
+            return `<w:p>${pPr}<w:r>${r1Pr}<w:t xml:space="preserve">${escapeXml(namePart)} </w:t></w:r><w:r>${r2Pr}<w:t>${escapeXml(rolePart)}</w:t></w:r></w:p>`;
         }
 
         if (/^\d+\.\s*(Đ\/c|[A-ZÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬ])/i.test(l) || l.includes('Đ/c')) {
-            return `
-            <w:p>
-                <w:pPr><w:spacing w:after="30"/></w:pPr>
-                <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:sz w:val="${fontSize}"/></w:rPr><w:t>${escapeXml(l)}</w:t></w:r>
-            </w:p>`;
+            const rPr = makeRPr("Times New Roman", true, false, fontSize);
+            return `<w:p>${pPr}<w:r>${rPr}<w:t>${escapeXml(l)}</w:t></w:r></w:p>`;
         }
 
-        return `
-        <w:p>
-            <w:pPr><w:spacing w:after="30"/></w:pPr>
-            <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:sz w:val="${fontSize}"/></w:rPr><w:t>${escapeXml(l)}</w:t></w:r>
-        </w:p>`;
+        const rPr = makeRPr("Times New Roman", false, false, fontSize);
+        return `<w:p>${pPr}<w:r>${rPr}<w:t>${escapeXml(l)}</w:t></w:r></w:p>`;
     }).join('');
 
-    return `
-    <w:tc>
-        <w:tcPr>
-            <w:tcW w:w="${widthDxa}" w:type="dxa"/>
-            <w:vAlign w:val="top"/>
-            <w:tcBorders>
-                <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-            </w:tcBorders>
-        </w:tcPr>
-        ${parasXml}
-    </w:tc>`;
+    return `<w:tc>${tcPr}${parasXml}</w:tc>`;
 }
 
-function makeXmlWithSuperscript(lines, widthDxa, fontSize = 20) {
+function makeDocxXmlWithSuperscript(lines, widthDxa, fontSize = 20) {
     if (!lines || lines.length === 0) {
-        return `<w:tc><w:tcPr><w:tcW w:w="${widthDxa}" w:type="dxa"/><w:vAlign w:val="top"/><w:tcBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/></w:tcBorders></w:tcPr><w:p><w:pPr><w:spacing w:after="0"/></w:pPr></w:p></w:tc>`;
+        const tcPr = makeTcPr(widthDxa, null, null, null, "top", true);
+        const pPr = makePPr("left", 0, 0, 240);
+        return `<w:tc>${tcPr}<w:p>${pPr}</w:p></w:tc>`;
     }
 
+    const tcPr = makeTcPr(widthDxa, null, null, null, "top", true);
     const parasXml = lines.map(l => {
         let isHeaderBold = false;
         if (/^(\*Tuần tra|\* Tuần tra|\*Kiểm soát|\* Kiểm soát|\* PC02|\d+\.\s+Tuần tra|\d+\.\s+Kiểm soát)/.test(l)) {
             isHeaderBold = true;
         }
 
+        const pPr = makePPr("left", 30, 0, 240);
+
         if (anyStartsWith(l, ['- Tuyến:', '- Thời gian:'])) {
             const parts = l.split(':');
             if (parts.length >= 2) {
                 const p1 = parts[0] + ': ';
                 const p2 = parts.slice(1).join(':').trim();
-                return `
-                <w:p>
-                    <w:pPr><w:spacing w:after="30"/></w:pPr>
-                    <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:sz w:val="${fontSize}"/></w:rPr><w:t>${escapeXml(p1)}</w:t></w:r>
-                    ${formatXmlChainageRuns(p2, false, fontSize)}
-                </w:p>`;
+                const r1Pr = makeRPr("Times New Roman", true, false, fontSize);
+                return `<w:p>${pPr}<w:r>${r1Pr}<w:t xml:space="preserve">${escapeXml(p1)}</w:t></w:r>${formatDocxChainageRuns(p2, false, fontSize)}</w:p>`;
             }
         }
 
-        return `
-        <w:p>
-            <w:pPr><w:spacing w:after="30"/></w:pPr>
-            ${formatXmlChainageRuns(l, isHeaderBold, fontSize)}
-        </w:p>`;
+        return `<w:p>${pPr}${formatDocxChainageRuns(l, isHeaderBold, fontSize)}</w:p>`;
     }).join('');
 
-    return `
-    <w:tc>
-        <w:tcPr>
-            <w:tcW w:w="${widthDxa}" w:type="dxa"/>
-            <w:vAlign w:val="top"/>
-            <w:tcBorders>
-                <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-            </w:tcBorders>
-        </w:tcPr>
-        ${parasXml}
-    </w:tc>`;
+    return `<w:tc>${tcPr}${parasXml}</w:tc>`;
 }
 
-function formatXmlChainageRuns(text, isBold, fontSize) {
+function formatDocxChainageRuns(text, isBold, fontSize) {
     const pattern = /(Km\s+\d+|\d+)(\+\d+)/gi;
     let pos = 0;
     let runsXml = '';
@@ -1167,117 +1104,96 @@ function formatXmlChainageRuns(text, isBold, fontSize) {
         const end = pattern.lastIndex;
 
         if (start > pos) {
-            runsXml += `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>${isBold ? '<w:b/>' : ''}<w:sz w:val="${fontSize}"/></w:rPr><w:t xml:space="preserve">${escapeXml(text.substring(pos, start))}</w:t></w:r>`;
+            const rPr = makeRPr("Times New Roman", isBold, false, fontSize);
+            runsXml += `<w:r>${rPr}<w:t xml:space="preserve">${escapeXml(text.substring(pos, start))}</w:t></w:r>`;
         }
 
         const kmPart = match[1];
         const plusPart = match[2];
 
-        runsXml += `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>${isBold ? '<w:b/>' : ''}<w:sz w:val="${fontSize}"/></w:rPr><w:t xml:space="preserve">${escapeXml(kmPart)}</w:t></w:r>`;
-        runsXml += `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>${isBold ? '<w:b/>' : ''}<w:vertAlign w:val="superscript"/><w:sz w:val="${fontSize - 4}"/></w:rPr><w:t xml:space="preserve">${escapeXml(plusPart)}</w:t></w:r>`;
+        const kmRPr = makeRPr("Times New Roman", isBold, false, fontSize);
+        const plusRPr = makeRPr("Times New Roman", isBold, false, fontSize - 4, "superscript");
+
+        runsXml += `<w:r>${kmRPr}<w:t xml:space="preserve">${escapeXml(kmPart)}</w:t></w:r>`;
+        runsXml += `<w:r>${plusRPr}<w:t xml:space="preserve">${escapeXml(plusPart)}</w:t></w:r>`;
 
         pos = end;
     }
 
     if (pos < text.length) {
-        runsXml += `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>${isBold ? '<w:b/>' : ''}<w:sz w:val="${fontSize}"/></w:rPr><w:t xml:space="preserve">${escapeXml(text.substring(pos))}</w:t></w:r>`;
+        const rPr = makeRPr("Times New Roman", isBold, false, fontSize);
+        runsXml += `<w:r>${rPr}<w:t xml:space="preserve">${escapeXml(text.substring(pos))}</w:t></w:r>`;
     }
 
-    return runsXml || `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>${isBold ? '<w:b/>' : ''}<w:sz w:val="${fontSize}"/></w:rPr><w:t xml:space="preserve">${escapeXml(text)}</w:t></w:r>`;
+    return runsXml || `<w:r>${makeRPr("Times New Roman", isBold, false, fontSize)}<w:t xml:space="preserve">${escapeXml(text)}</w:t></w:r>`;
 }
 
-function makeXmlCol6(lines, widthDxa, fontSize = 20) {
+function makeDocxXmlCol6(lines, widthDxa, fontSize = 20) {
     if (!lines || lines.length === 0) {
-        return `<w:tc><w:tcPr><w:tcW w:w="${widthDxa}" w:type="dxa"/><w:vAlign w:val="top"/><w:tcBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/></w:tcBorders></w:tcPr><w:p><w:pPr><w:spacing w:after="0"/></w:pPr></w:p></w:tc>`;
+        const tcPr = makeTcPr(widthDxa, null, null, null, "top", true);
+        const pPr = makePPr("left", 0, 0, 240);
+        return `<w:tc>${tcPr}<w:p>${pPr}</w:p></w:tc>`;
     }
+
+    const tcPr = makeTcPr(widthDxa, null, null, null, "top", true);
     const parasXml = lines.map(l => {
         let isVehicleBold = false;
         if (l.startsWith('*') || /\d{2}[A-Z]\d?\s*-\s*[\d\.]+/.test(l)) {
             isVehicleBold = true;
         }
 
+        const pPr = makePPr("left", 30, 0, 240);
+
         if (anyStartsWith(l, ['- Phương tiện, thiết bị', '- Thiết bị', '- Phương tiện thông tin', '- Vũ khí', '- Súng', '- Gậy', '- Các biểu mẫu', '- Cân', '- Máy'])) {
             const parts = l.split(':');
             if (parts.length >= 2) {
                 const p1 = parts[0] + ': ';
                 const p2 = parts.slice(1).join(':').trim();
-                return `
-                <w:p>
-                    <w:pPr><w:spacing w:after="30"/></w:pPr>
-                    <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:sz w:val="${fontSize}"/></w:rPr><w:t>${escapeXml(p1)}</w:t></w:r>
-                    <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:sz w:val="${fontSize}"/></w:rPr><w:t>${escapeXml(p2)}</w:t></w:r>
-                </w:p>`;
+                const r1Pr = makeRPr("Times New Roman", true, false, fontSize);
+                const r2Pr = makeRPr("Times New Roman", false, false, fontSize);
+                return `<w:p>${pPr}<w:r>${r1Pr}<w:t xml:space="preserve">${escapeXml(p1)}</w:t></w:r><w:r>${r2Pr}<w:t>${escapeXml(p2)}</w:t></w:r></w:p>`;
             }
         }
 
-        return `
-        <w:p>
-            <w:pPr><w:spacing w:after="30"/></w:pPr>
-            <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>${isVehicleBold ? '<w:b/>' : ''}<w:sz w:val="${fontSize}"/></w:rPr><w:t>${escapeXml(l)}</w:t></w:r>
-        </w:p>`;
+        const rPr = makeRPr("Times New Roman", isVehicleBold, false, fontSize);
+        return `<w:p>${pPr}<w:r>${rPr}<w:t>${escapeXml(l)}</w:t></w:r></w:p>`;
     }).join('');
 
-    return `
-    <w:tc>
-        <w:tcPr>
-            <w:tcW w:w="${widthDxa}" w:type="dxa"/>
-            <w:vAlign w:val="top"/>
-            <w:tcBorders>
-                <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-            </w:tcBorders>
-        </w:tcPr>
-        ${parasXml}
-    </w:tc>`;
+    return `<w:tc>${tcPr}${parasXml}</w:tc>`;
 }
 
-function makeXmlGeneral(lines, widthDxa, fontSize = 20) {
+function makeDocxXmlGeneral(lines, widthDxa, fontSize = 20) {
     if (!lines || lines.length === 0) {
-        return `<w:tc><w:tcPr><w:tcW w:w="${widthDxa}" w:type="dxa"/><w:vAlign w:val="top"/><w:tcBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/></w:tcBorders></w:tcPr><w:p><w:pPr><w:spacing w:after="0"/></w:pPr></w:p></w:tc>`;
+        const tcPr = makeTcPr(widthDxa, null, null, null, "top", true);
+        const pPr = makePPr("left", 0, 0, 240);
+        return `<w:tc>${tcPr}<w:p>${pPr}</w:p></w:tc>`;
     }
+
+    const tcPr = makeTcPr(widthDxa, null, null, null, "top", true);
     const parasXml = lines.map(l => {
         let isBold = false;
         if (/^(\*Tuần tra|\* Tuần tra|\*Kiểm soát|\* Kiểm soát|\* PC02|\d+\.\s+Tuần tra|\d+\.\s+Kiểm soát)/.test(l)) {
             isBold = true;
         }
 
+        const pPr = makePPr("left", 30, 0, 240);
+
         if (anyStartsWith(l, ['- Tuyến:', '- Thời gian:', '- Đối tượng', '- Hành vi', '- Tuyên truyền'])) {
             const parts = l.split(':');
             if (parts.length >= 2) {
                 const p1 = parts[0] + ': ';
                 const p2 = parts.slice(1).join(':').trim();
-                return `
-                <w:p>
-                    <w:pPr><w:spacing w:after="30"/></w:pPr>
-                    <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:sz w:val="${fontSize}"/></w:rPr><w:t>${escapeXml(p1)}</w:t></w:r>
-                    <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:sz w:val="${fontSize}"/></w:rPr><w:t>${escapeXml(p2)}</w:t></w:r>
-                </w:p>`;
+                const r1Pr = makeRPr("Times New Roman", true, false, fontSize);
+                const r2Pr = makeRPr("Times New Roman", false, false, fontSize);
+                return `<w:p>${pPr}<w:r>${r1Pr}<w:t xml:space="preserve">${escapeXml(p1)}</w:t></w:r><w:r>${r2Pr}<w:t>${escapeXml(p2)}</w:t></w:r></w:p>`;
             }
         }
 
-        return `
-        <w:p>
-            <w:pPr><w:spacing w:after="30"/></w:pPr>
-            <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>${isBold ? '<w:b/>' : ''}<w:sz w:val="${fontSize}"/></w:rPr><w:t>${escapeXml(l)}</w:t></w:r>
-        </w:p>`;
+        const rPr = makeRPr("Times New Roman", isBold, false, fontSize);
+        return `<w:p>${pPr}<w:r>${rPr}<w:t>${escapeXml(l)}</w:t></w:r></w:p>`;
     }).join('');
 
-    return `
-    <w:tc>
-        <w:tcPr>
-            <w:tcW w:w="${widthDxa}" w:type="dxa"/>
-            <w:vAlign w:val="top"/>
-            <w:tcBorders>
-                <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-                <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-            </w:tcBorders>
-        </w:tcPr>
-        ${parasXml}
-    </w:tc>`;
+    return `<w:tc>${tcPr}${parasXml}</w:tc>`;
 }
 
 function anyStartsWith(str, prefixes) {

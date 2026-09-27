@@ -58,7 +58,7 @@ if (window.lucide) {
 if (btnPrintPdf) {
     btnPrintPdf.addEventListener('click', () => {
         const origTitle = document.title;
-        document.title = ""; // Hides website title from print header
+        document.title = ""; // Hides website title and URL from print header
         window.print();
         setTimeout(() => {
             document.title = origTitle;
@@ -204,7 +204,7 @@ btnProcess.addEventListener('click', async () => {
             allRuns.push(...items);
         }
 
-        progressText.innerText = "Đang tách các ca thuộc Tổ Trà Vinh...";
+        progressText.innerText = "Đang tách các ca thuộc Tổ Trà Vinh và giữ đúng 100% mẫu...";
         progressBar.style.width = `85%`;
         progressPct.innerText = `85%`;
 
@@ -299,16 +299,48 @@ function joinRunsWithSpaces(lineRuns) {
     return res;
 }
 
-function splitGluedVietnameseWords(text) {
-    if (!text) return "";
-    let t = text;
+function cleanCellLines(lines) {
+    if (!lines || lines.length === 0) return [];
+    let raw = lines.join('\n');
 
-    const replacements = [
+    // 1. Remove stray chainage numbers that attached to header lines
+    raw = raw.replace(/(\*?\s*Tuần tra,\s*kiểm soát\s*cơ động\s*):?\s*\+\d+/gi, '$1:');
+    raw = raw.replace(/(\*?\s*Tuần tra,\s*kiểm soát\s*công khai[^:]*):?\s*\+\d+/gi, '$1:');
+    raw = raw.replace(/(1\.\s*Tuần tra,\s*kiểm soát\s*cơ động\s*):?\s*\+\d+/gi, '$1:');
+    raw = raw.replace(/(2\.\s*Kiểm soát\s*tại[^:]*):?\s*\+\d+/gi, '$1:');
+    raw = raw.replace(/:\s*\+\d+/g, ':');
+
+    // 2. Standardize Route 1 (Trà Vinh cũ): QL53 (Km 43+108 -> 166+858), QL53B, QL54 (82+700 -> 148+200), QL60 (11+308 -> 101+226)
+    if (raw.includes('QL53') && (raw.includes('43') || raw.includes('166')) && raw.includes('Trà Vinh cũ')) {
+        raw = raw.replace(
+            /QL53.*?101.*?(?=Các tuyến đường|$)/s,
+            'QL53, từ Km 43+108 đến Km 166+858; QL53B; QL54, từ Km 82+700 đến Km 148+200; QL60, từ Km 11+308 đến Km 101+226; '
+        );
+    }
+
+    // 3. Standardize Route 2 (Trà Vinh, Nguyệt Hóa...): QL53 (Km 56+700 -> 65+450), QL54 (144+450 -> 148+200), QL60 (71 -> 72)
+    if (raw.includes('QL53') && (raw.includes('56') || raw.includes('65')) && (raw.includes('Trà Vinh') || raw.includes('Nguyệt Hóa'))) {
+        raw = raw.replace(
+            /QL53.*?Km\s*72;?/s,
+            'QL53, từ Km 56+700 đến Km 65+450; QL54, từ Km 144+450 đến Km 148+200; QL60, từ Km 71 đến Km 72;'
+        );
+    }
+
+    // 4. General chainage cleaners
+    raw = raw.replace(/Km\s+(\d+)\s+đến\s+Km\s*\+(\d+)\+(\d+)\s+(\d+)/g, 'Km $1+$2 đến Km $4+$3');
+    raw = raw.replace(/Km\s+(\d+)\s*\+(\d+)\s+đến\s+Km\s+(\d+)\s*\+(\d+)/g, 'Km $1+$2 đến Km $3+$4');
+    raw = raw.replace(/Km\s+(\d+)\s*\n*\s*\+(\d+)/g, 'Km $1+$2');
+    raw = raw.replace(/(\d+)\s*\n*\s*\+(\d+)/g, '$1+$2');
+
+    // 5. Comprehensive Glued Words Replacements
+    const gluedReplacements = [
+        [/Các\s*biểu\s*mẫu\s*theo\s*thông\s*tư/gi, 'Các biểu mẫu theo Thông tư '],
+        [/Các\s*biểu\s*mẫu\s*theo\s*nghị\s*định/gi, 'Các biểu mẫu theo Nghị định '],
+        [/biểu\s*mẫu\s*theo\s*thông\s*tư/gi, 'biểu mẫu theo Thông tư '],
+        [/biểu\s*mẫu\s*theo\s*nghị\s*định/gi, 'biểu mẫu theo Nghị định '],
         [/Cácbiểumẫutheothôngtư/gi, 'Các biểu mẫu theo Thông tư '],
         [/CácbiểumẫutheoNghịđịnh/gi, 'Các biểu mẫu theo Nghị định '],
         [/Cácbiểumẫu/gi, 'Các biểu mẫu '],
-        [/biểumẫutheothôngtư/gi, 'biểu mẫu theo Thông tư '],
-        [/biểumẫutheoNghịđịnh/gi, 'biểu mẫu theo Nghị định '],
         [/biểumẫu/gi, 'biểu mẫu '],
         [/theothôngtư/gi, 'theo Thông tư '],
         [/theoNghịđịnh/gi, 'theo Nghị định '],
@@ -337,7 +369,7 @@ function splitGluedVietnameseWords(text) {
         [/PRODIGYII/gi, 'PRODIGY II'],
         [/Máyđonồngđộcồn/gi, 'Máy đo nồng độ cồn '],
         [/đonồngđộcồn/gi, 'đo nồng độ cồn '],
-        [/nồngđộcồn/gi, 'nồng độ cồn'],
+        [/nồngđ��cồn/gi, 'nồng độ cồn'],
         [/súngbắnđạncaosu/gi, 'súng bắn đạn cao su '],
         [/súngbắnđạncao/gi, 'súng bắn đạn cao '],
         [/súngbắnđạn/gi, 'súng bắn đạn '],
@@ -376,9 +408,6 @@ function splitGluedVietnameseWords(text) {
         [/Tuầntra,kiểmsoátcơđộng/gi, 'Tuần tra, kiểm soát cơ động'],
         [/Tuầntra,kiểmsoát/gi, 'Tuần tra, kiểm soát '],
         [/kiểmsoátcơđộng/gi, 'kiểm soát cơ động'],
-        [/cơđộng:\+\d+/gi, 'cơ động:'],
-        [/cơđộng:/gi, 'cơ động:'],
-        [/:\+\d+/gi, ':'],
         [/Kiểmsoáttại01điểm/gi, 'Kiểm soát tại 01 điểm '],
         [/Kiểmsoáttạimộtđiểm/gi, 'Kiểm soát tại một điểm '],
         [/trênđườnggiaothông/gi, 'trên đường giao thông'],
@@ -414,23 +443,9 @@ function splitGluedVietnameseWords(text) {
         [/Thôngtư73\/2024\/TT-BCAngày15\/11\/2024/gi, 'Thông tư 73/2024/TT-BCA ngày 15/11/2024']
     ];
 
-    replacements.forEach(([pat, rep]) => {
-        t = t.replace(pat, rep);
+    gluedReplacements.forEach(([pat, rep]) => {
+        raw = raw.replace(pat, rep);
     });
-
-    t = t.replace(/[ \t]+/g, ' ');
-    return t.trim();
-}
-
-function cleanCellLines(lines) {
-    if (!lines || lines.length === 0) return [];
-    let raw = lines.join('\n');
-
-    // 1. Fix chainages: e.g. Km 56 +700 đến Km 65 +450 -> Km 56+700 đến Km 65+450
-    raw = raw.replace(/Km\s+(\d+)\s+đến\s+Km\s*\+(\d+)\+(\d+)\s+(\d+)/g, 'Km $1+$2 đến Km $4+$3');
-    raw = raw.replace(/Km\s+(\d+)\s*\+(\d+)\s+đến\s+Km\s+(\d+)\s*\+(\d+)/g, 'Km $1+$2 đến Km $3+$4');
-    raw = raw.replace(/Km\s+(\d+)\s*\n*\s*\+(\d+)/g, 'Km $1+$2');
-    raw = raw.replace(/(\d+)\s*\n*\s*\+(\d+)/g, '$1+$2');
 
     const clean = [];
     raw.split('\n').forEach(l => {
@@ -449,9 +464,6 @@ function cleanCellLines(lines) {
         l = l.replace(/tỉnhVĩnh/g, 'tỉnh Vĩnh');
         l = l.replace(/Tổ 1 7/g, 'Tổ 17');
         l = l.replace(/họp với/g, 'hợp với');
-
-        // Apply word splitter
-        l = splitGluedVietnameseWords(l);
 
         clean.push(l);
     });
@@ -774,7 +786,7 @@ btnExportDocx.addEventListener('click', async () => {
             </w:tc>
         </w:tr>`;
 
-        // Header Row 2: Columns Header
+        // Row 2: Headers
         const colHeaders = [
             { t: "Ngày, tháng", w: 1300 },
             { t: "Tổ Cảnh sát\ngiao thông", w: 2200 },
@@ -903,7 +915,7 @@ btnExportDocx.addEventListener('click', async () => {
     </w:p>
     <w:p>
         <w:pPr><w:jc w:val="both"/><w:spacing w:after="150" w:line="260" w:lineRule="auto"/></w:pPr>
-        <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:sz w:val="22"/></w:rPr><w:t>1. Thực hiện Kế hoạch số 121/KH-PC08 ngày 22/10/2024 của Phòng PC08, Công an t��nh Vĩnh Long về thực hiện cao điểm tổng rà soát, phát hiện, thống kê người điều khiển phương tiện mà trong cơ thể có chất ma túy; các điểm, tụ điểm phức tạp về ma túy và đấu tranh, phòng chống tội phạm về ma túy của lực lượng Cảnh sát giao thông trên địa bàn tỉnh; Kế hoạch số 2487/KH-CAT ngày 30/12/2025 của Công an tỉnh về huy động lực lượng khác trong Công an tỉnh phối hợp tuần tra, kiểm soát bảo đảm trật tự, an toàn giao thông đường bộ; Kế hoạch 22/KH-PC08 ngày 18/3/2026 của Phòng PC08 về việc tuần tra, kiểm tra, kiểm soát, xử lý các chuyên đề vi phạm là nguyên nhân chính gây tai nạn giao thông trên các tuyến giao thông đường bộ; Kế hoạch số 166/KH-PC08 ngày 09/6/2026 của Phòng PC08 về việc thực hiện cao điểm phối hợp tuyên truyền, tấn công trấn áp tội phạm về ma tuý giữa Việt Nam, Trung Quốc, Lào và Myanmar trên các tuyến giao thông của lực lượng Cảnh sát giao thông; Kế hoạch số 399/KH-CAT-PC08 ngày 25/8/2026 của Công an tỉnh về tổng kiểm soát, xử lý vi phạm về trật tự an toàn giao thông đường bộ đối với phương tiện kinh doanh vận tải trên địa bàn tỉnh; Kế hoạch số 197/KH-PC08 ngày 14/9/2026 của Phòng PC08 về việc phối hợp tuần tra, kiểm soát phòng, chống đua xe trái phép và phòng chống các loại tội phạm hoạt động theo các tuyến giao thông trên địa bàn tỉnh; Căn cứ kết quả công tác điều tra cơ bản tuyến, điều tra, giải quyết tai nạn giao thông, kết quả xử lý vi phạm giao thông, tình hình trật tự, an toàn giao thông, trật tự xã hội, vi phạm giao thông nổi lên từ ngày 21/9/2026 đến ngày 27/9/2026, Đội Cảnh sát giao thông đường bộ xây dựng kế hoạch công tác tuần như sau:</w:t></w:r>
+        <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:sz w:val="22"/></w:rPr><w:t>1. Thực hiện Kế hoạch số 121/KH-PC08 ngày 22/10/2024 của Phòng PC08, Công an tỉnh Vĩnh Long về thực hiện cao điểm tổng rà soát, phát hiện, thống kê người điều khiển phương tiện mà trong cơ thể có chất ma túy; các điểm, tụ điểm phức tạp về ma túy và đấu tranh, phòng chống tội phạm về ma túy của lực lượng Cảnh sát giao thông trên địa bàn tỉnh; Kế hoạch số 2487/KH-CAT ngày 30/12/2025 của Công an tỉnh về huy động lực lượng khác trong Công an tỉnh phối hợp tuần tra, kiểm soát bảo đảm trật tự, an toàn giao thông đường bộ; Kế hoạch 22/KH-PC08 ngày 18/3/2026 của Phòng PC08 về việc tuần tra, kiểm tra, kiểm soát, xử lý các chuyên đề vi phạm là nguyên nhân chính gây tai nạn giao thông trên các tuyến giao thông đường bộ; Kế hoạch số 166/KH-PC08 ngày 09/6/2026 của Phòng PC08 về việc thực hiện cao điểm phối hợp tuyên truyền, tấn công trấn áp tội phạm về ma tuý giữa Việt Nam, Trung Quốc, Lào và Myanmar trên các tuyến giao thông của lực lượng Cảnh sát giao thông; Kế hoạch số 399/KH-CAT-PC08 ngày 25/8/2026 của Công an tỉnh về tổng kiểm soát, xử lý vi phạm về trật tự an toàn giao thông đường bộ đối với phương tiện kinh doanh vận tải trên địa bàn tỉnh; Kế hoạch số 197/KH-PC08 ngày 14/9/2026 của Phòng PC08 về việc phối hợp tuần tra, kiểm soát phòng, chống đua xe trái phép và phòng chống các loại tội phạm hoạt động theo các tuyến giao thông trên địa bàn tỉnh; Căn cứ kết quả công tác điều tra cơ bản tuyến, điều tra, giải quyết tai nạn giao thông, kết quả xử lý vi phạm giao thông, tình hình trật tự, an toàn giao thông, trật tự xã hội, vi phạm giao thông nổi lên từ ngày 21/9/2026 đến ngày 27/9/2026, Đội Cảnh sát giao thông đường bộ xây dựng kế hoạch công tác tuần như sau:</w:t></w:r>
     </w:p>
     <w:tbl>
         <w:tblPr>
@@ -1075,7 +1087,8 @@ function makeXmlCol2(lines, widthDxa, fontSize = 22) {
 
 function makeXmlCol6(lines, widthDxa, fontSize = 20) {
     if (!lines || lines.length === 0) {
-        return `<w:tc><w:tcPr><w:tcW w:w="${widthDxa}" w:type="dxa"/><w:vAlign w:val="top"/><w:tcBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/></w:tcBorders></w:tcPr><w:p><w:pPr><w:spacing w:after="0"/></w:pPr></w:p></w:tc>`;
+        return `<w:tc><w:tcPr><w:tcW w:w="${widthDxa}" w:type="dxa"/><w:vAlign w:val="top"/><w:tcBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+<w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/></w:tcBorders></w:tcPr><w:p><w:pPr><w:spacing w:after="0"/></w:pPr></w:p></w:tc>`;
     }
     const parasXml = lines.map(l => {
         let isVehicleBold = false;

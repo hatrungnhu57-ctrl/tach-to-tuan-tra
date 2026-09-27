@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Phần Mềm Tách Tổ Tuần Tra - Kế Hoạch Tuần CSGT</title>
+    <title>Kế Hoạch Tuần Tra Kiểm Soát - Tổ Trà Vinh</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PDF.js -->
@@ -12,21 +12,64 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Times+New+Roman&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .font-doc { font-family: 'Times New Roman', Times, serif; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .font-times { font-family: "Times New Roman", Times, serif; }
+
+        /* Print / PDF Styling - Exactly matches Master Official PDF */
         @media print {
-            .no-print { display: none !important; }
-            .print-only { display: block !important; }
-            body { background: white !important; }
-            .doc-page { box-shadow: none !important; border: none !important; padding: 0 !important; width: 100% !important; max-width: 100% !important; }
+            @page {
+                size: A4 landscape;
+                margin: 12mm 10mm 12mm 10mm;
+            }
+            body {
+                background: white !important;
+                color: black !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                font-family: "Times New Roman", Times, serif !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            .doc-container {
+                max-width: 100% !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+                background: white !important;
+            }
+            table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                page-break-inside: auto;
+            }
+            tr {
+                page-break-inside: avoid !important;
+                page-break-after: auto;
+            }
+            thead {
+                display: table-header-group;
+            }
+            th, td {
+                border: 1px solid black !important;
+                color: black !important;
+            }
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
         }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
 
-    <!-- Header / Navbar -->
+    <!-- Header / Navbar (Hidden when printing) -->
     <header class="bg-gradient-to-r from-red-800 via-red-900 to-amber-900 text-white shadow-md no-print">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div class="flex items-center gap-3">
@@ -50,12 +93,12 @@
     <!-- Main Container -->
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-        <!-- Step 1: Upload Card -->
+        <!-- Step 1: Upload Card (Hidden when printing) -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 no-print">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
                 <!-- Dropzone -->
                 <div class="lg:col-span-8">
-                    <label for="pdf-file-input" class="relative border-2 border-dashed border-slate-300 hover:border-blue-500 bg-slate-50 hover:bg-blue-50/40 rounded-2xl p-6 transition flex flex-col items-center justify-center cursor-pointer text-center group">
+                    <label for="pdf-file-input" class="relative border-2 border-dashed border-slate-300 hover:border-red-600 bg-slate-50 hover:bg-red-50/30 rounded-2xl p-6 transition flex flex-col items-center justify-center cursor-pointer text-center group">
                         <input id="pdf-file-input" type="file" accept=".pdf" class="sr-only">
                         <div class="w-12 h-12 rounded-full bg-red-100 text-red-700 flex items-center justify-center mb-2.5 group-hover:scale-110 transition">
                             <i data-lucide="file-up" class="w-6 h-6"></i>
@@ -64,7 +107,7 @@
                             Nhấp hoặc Kéo thả file PDF Kế hoạch tuần vào đây
                         </p>
                         <p class="text-xs text-slate-500" id="upload-detail-text">
-                            Hỗ trợ file PDF Kế hoạch tuần tra, kiểm soát công tác tuần (Mẫu số 03/TT)
+                            Hỗ trợ file PDF Kế hoạch tuần tra, kiểm soát công tác tuần (Mẫu số 03/TT của Bộ Công an)
                         </p>
                     </label>
                 </div>
@@ -97,89 +140,89 @@
         <!-- Result Section -->
         <div id="result-section" class="hidden space-y-6">
 
-            <!-- Action Bar -->
+            <!-- Action Toolbar (Hidden when printing) -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-4 no-print">
                 <div class="flex items-center gap-3">
-                    <span class="px-3 py-1.5 bg-blue-50 text-blue-800 border border-blue-200 text-xs font-bold rounded-lg flex items-center gap-1.5">
-                        <i data-lucide="check-circle" class="w-4 h-4 text-blue-600"></i>
+                    <span class="px-3 py-1.5 bg-red-50 text-red-800 border border-red-200 text-xs font-bold rounded-lg flex items-center gap-1.5">
+                        <i data-lucide="check-circle-2" class="w-4 h-4 text-red-700"></i>
                         <span id="stat-total-shifts-badge">Đã tách 20 ca Tổ Trà Vinh</span>
                     </span>
-                    <span class="text-xs text-slate-500 hidden sm:inline" id="stat-days-badge">Đủ 7 ngày từ T2 đến CN</span>
+                    <span class="text-xs text-slate-500 hidden sm:inline" id="stat-days-badge">Đủ 7 ngày từ Thứ Hai đến Chủ Nhật</span>
                 </div>
 
                 <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
                     <button id="btn-export-docx" class="flex items-center gap-2 px-5 py-2.5 bg-blue-700 hover:bg-blue-800 text-white text-sm font-bold rounded-xl shadow transition">
-                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <i data-lucide="file-text" class="w-4 h-4"></i>
                         <span>Xuất file Word (.docx)</span>
                     </button>
-                    <button onclick="window.print()" class="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition">
+                    <button onclick="window.print()" class="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-sm font-bold rounded-xl shadow transition">
                         <i data-lucide="printer" class="w-4 h-4"></i>
-                        <span>In / Xuất PDF</span>
+                        <span>Xuất PDF / In</span>
                     </button>
                 </div>
             </div>
 
-            <!-- Full Document Preview Container (Styled exactly like official Word document) -->
-            <div class="doc-page bg-white rounded-2xl shadow-md border border-slate-200 p-6 sm:p-10 font-doc text-slate-900 leading-normal">
+            <!-- Full Document Container: Exactly replicates the Master Official Document in Times New Roman -->
+            <div class="doc-container bg-white rounded-2xl shadow-md border border-slate-300 p-6 sm:p-10 font-times text-black leading-normal">
 
                 <!-- Mẫu số 03/TT -->
-                <div class="text-right text-xs leading-tight mb-4">
+                <div class="text-right text-[12px] leading-tight mb-3">
                     <p class="font-bold text-[13px]">Mẫu số 03/TT</p>
-                    <p class="italic text-[11px] text-slate-600">(Kèm theo Thông tư số 14/2025/TT-BCA ngày 28/02/2025 của Bộ trưởng Bộ Công an)</p>
+                    <p class="italic text-[11px] text-slate-700">(Kèm theo Thông tư số 14/2025/TT-BCA ngày 28/02/2025 của Bộ trưởng Bộ Công an)</p>
                 </div>
 
-                <!-- Header 2-Column: Left Agency, Right Motto -->
-                <div class="grid grid-cols-2 gap-4 text-center items-start border-b-2 border-slate-900 pb-3 mb-6">
+                <!-- Header: Left Unit, Right Republic -->
+                <div class="grid grid-cols-2 gap-4 text-center items-start border-b border-black pb-2 mb-4">
                     <div>
                         <p class="text-[13px] tracking-wide">PHÒNG CẢNH SÁT GIAO THÔNG</p>
-                        <p class="font-bold text-[14px] uppercase tracking-wide">ĐỘI CẢNH SÁT GIAO THÔNG ĐƯỜNG BỘ</p>
+                        <p class="font-bold text-[13px] uppercase tracking-wide">ĐỘI CẢNH SÁT GIAO THÔNG ĐƯỜNG BỘ</p>
                     </div>
                     <div>
                         <p class="font-bold text-[13px] uppercase tracking-wide">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</p>
                         <p class="font-bold text-[14px]">Độc lập - Tự do - Hạnh phúc</p>
-                        <p class="italic text-[12px] text-slate-700 mt-1" id="doc-date-location">Vĩnh Long, ngày 28 tháng 9 năm 2026</p>
+                        <p class="italic text-[12px] text-slate-800 mt-1">Vĩnh Long, ngày 28 tháng 9 năm 2026</p>
                     </div>
                 </div>
 
-                <!-- Document Title -->
-                <div class="text-center my-6 space-y-1">
-                    <h2 class="font-bold text-xl sm:text-2xl uppercase tracking-wide" id="doc-main-title">KẾ HOẠCH CÔNG TÁC TUẦN</h2>
-                    <p class="italic font-bold text-sm sm:text-base text-slate-800" id="doc-date-range">(Từ ngày 28/9/2026 đến ngày 04/10/2026)</p>
+                <!-- Title -->
+                <div class="text-center my-4 space-y-0.5">
+                    <h2 class="font-bold text-[18px] uppercase tracking-wide">KẾ HOẠCH CÔNG TÁC TUẦN</h2>
+                    <p class="italic font-bold text-[14px] text-slate-900">(Từ ngày 28/9/2026 đến ngày 04/10/2026)</p>
                 </div>
 
-                <!-- Intro / Legal Basis (Verbatim) -->
-                <div class="text-justify text-[13px] leading-relaxed mb-6 indent-6 space-y-2" id="doc-intro-text">
+                <!-- Intro / Legal Basis Text (Verbatim) -->
+                <div class="text-justify text-[13px] leading-relaxed mb-4 indent-6">
                     <p>
                         1. Thực hiện Kế hoạch số 121/KH-PC08 ngày 22/10/2024 của Phòng PC08, Công an tỉnh Vĩnh Long về thực hiện cao điểm tổng rà soát, phát hiện, thống kê người điều khiển phương tiện mà trong cơ thể có chất ma túy; các điểm, tụ điểm phức tạp về ma túy và đấu tranh, phòng chống tội phạm về ma túy của lực lượng Cảnh sát giao thông trên địa bàn tỉnh; Kế hoạch số 2487/KH-CAT ngày 30/12/2025 của Công an tỉnh về huy động lực lượng khác trong Công an tỉnh phối hợp tuần tra, kiểm soát bảo đảm trật tự, an toàn giao thông đường bộ; Kế hoạch 22/KH-PC08 ngày 18/3/2026 của Phòng PC08 về việc tuần tra, kiểm tra, kiểm soát, xử lý các chuyên đề vi phạm là nguyên nhân chính gây tai nạn giao thông trên các tuyến giao thông đường bộ; Kế hoạch số 166/KH-PC08 ngày 09/6/2026 của Phòng PC08 về việc thực hiện cao điểm phối hợp tuyên truyền, tấn công trấn áp tội phạm về ma tuý giữa Việt Nam, Trung Quốc, Lào và Myanmar trên các tuyến giao thông của lực lượng Cảnh sát giao thông; Kế hoạch số 399/KH-CAT-PC08 ngày 25/8/2026 của Công an tỉnh về tổng kiểm soát, xử lý vi phạm về trật tự an toàn giao thông đường bộ đối với phương tiện kinh doanh vận tải trên địa bàn tỉnh; Kế hoạch số 197/KH-PC08 ngày 14/9/2026 của Phòng PC08 về việc phối hợp tuần tra, kiểm soát phòng, chống đua xe trái phép và phòng chống các loại tội phạm hoạt động theo các tuyến giao thông trên địa bàn tỉnh; Căn cứ kết quả công tác điều tra cơ bản tuyến, điều tra, giải quyết tai nạn giao thông, kết quả xử lý vi phạm giao thông, tình hình trật tự, an toàn giao thông, trật tự xã hội, vi phạm giao thông nổi lên từ ngày 21/9/2026 đến ngày 27/9/2026, Đội Cảnh sát giao thông đường bộ xây dựng kế hoạch công tác tuần như sau:
                     </p>
                 </div>
 
-                <!-- Schedule Table -->
-                <div class="overflow-x-auto my-6 border border-slate-900">
-                    <table class="w-full text-left border-collapse text-[12px] leading-snug">
+                <!-- Table 6 Columns (With full borders) -->
+                <div class="overflow-x-auto my-4">
+                    <table class="w-full text-left border-collapse text-[12px] leading-snug border border-black">
                         <thead>
-                            <tr class="border-b border-slate-900 bg-slate-100">
-                                <th colspan="6" class="py-2 px-3 text-center font-bold text-[13px] border border-slate-900 uppercase">
+                            <tr class="bg-slate-100">
+                                <th colspan="6" class="py-1.5 px-2 text-center font-bold text-[13px] border border-black uppercase">
                                     Nội dung
                                 </th>
                             </tr>
-                            <tr class="border-b border-slate-900 bg-slate-50 text-center font-bold">
-                                <th class="py-2.5 px-2 w-[10%] border border-slate-900">Ngày, tháng</th>
-                                <th class="py-2.5 px-2 w-[15%] border border-slate-900">Tổ Cảnh sát giao thông</th>
-                                <th class="py-2.5 px-2 w-[9%] border border-slate-900">Lực lượng CS khác, CAX được huy động</th>
-                                <th class="py-2.5 px-2 w-[24%] border border-slate-900">Hình thức tuần tra, kiểm soát</th>
-                                <th class="py-2.5 px-2 w-[19%] border border-slate-900">Nhiệm vụ</th>
-                                <th class="py-2.5 px-2 w-[23%] border border-slate-900">Sử dụng xe tuần tra, kiểm soát, phương tiện, thiết bị kỹ thuật, nghiệp vụ, vũ khí, công cụ hỗ trợ</th>
+                            <tr class="bg-slate-50 text-center font-bold text-[11px] sm:text-[12px]">
+                                <th class="py-2 px-1.5 w-[9%] border border-black">Ngày, tháng</th>
+                                <th class="py-2 px-1.5 w-[15%] border border-black">Tổ Cảnh sát<br>giao thông</th>
+                                <th class="py-2 px-1.5 w-[9%] border border-black">Lực lượng CS khác,<br>CAX được huy động</th>
+                                <th class="py-2 px-1.5 w-[24%] border border-black">Hình thức tuần tra,<br>kiểm soát</th>
+                                <th class="py-2 px-1.5 w-[19%] border border-black">Nhiệm vụ</th>
+                                <th class="py-2 px-1.5 w-[24%] border border-black">Sử dụng xe tuần tra, kiểm soát,<br>phương tiện, thiết bị kỹ thuật,<br>nghiệp vụ, vũ khí, công cụ hỗ trợ</th>
                             </tr>
                         </thead>
-                        <tbody id="schedule-table-body" class="divide-y divide-slate-900">
+                        <tbody id="schedule-table-body">
                             <!-- Injected by JavaScript -->
                         </tbody>
                     </table>
                 </div>
 
                 <!-- Section 2: Nhiệm vụ khác -->
-                <div class="my-6 text-[13px] leading-relaxed space-y-1.5">
+                <div class="my-4 text-[13px] leading-relaxed space-y-1">
                     <p class="font-bold">2. Thực hiện yêu cầu, nhiệm vụ khác của Trưởng phòng (nếu có):</p>
                     <p class="text-justify indent-6">
                         Tùy theo tình hình thực tế giao cho chỉ huy Đội Cảnh sát giao thông đường bộ báo cáo Lãnh đạo phòng thay đổi tuyến, địa bàn, thời gian, lực lượng, phương tiện, thiết bị kỹ thuật nghiệp vụ, công cụ hỗ trợ và các điều kiện khác trong kế hoạch ngày cho phù hợp.
@@ -187,9 +230,9 @@
                 </div>
 
                 <!-- Signatures & Nơi nhận Table -->
-                <div class="grid grid-cols-3 gap-4 pt-6 text-[13px] items-start">
+                <div class="grid grid-cols-3 gap-4 pt-4 text-[13px] items-start">
                     <!-- Nơi nhận -->
-                    <div class="space-y-1 text-xs">
+                    <div class="space-y-0.5 text-[11px]">
                         <p class="font-bold italic">Nơi nhận:</p>
                         <p>- Đ/c Trưởng phòng (để chỉ đạo);</p>
                         <p>- Đ/c PTP phụ trách (để chỉ đạo);</p>
@@ -198,18 +241,18 @@
                     </div>
 
                     <!-- Đội trưởng -->
-                    <div class="text-center flex flex-col justify-between h-36">
-                        <p class="font-bold text-[14px]">ĐỘI TRƯỞNG</p>
-                        <p class="font-bold text-[14px]">Thượng tá Trần Văn Tiếp</p>
+                    <div class="text-center flex flex-col justify-between h-32">
+                        <p class="font-bold text-[13px]">ĐỘI TRƯỞNG</p>
+                        <p class="font-bold text-[13px]">Thượng tá Trần Văn Tiếp</p>
                     </div>
 
                     <!-- Lãnh đạo Phòng -->
-                    <div class="text-center flex flex-col justify-between h-36">
+                    <div class="text-center flex flex-col justify-between h-32">
                         <div>
-                            <p class="font-bold text-[14px]">KT. TRƯỞNG PHÒNG</p>
-                            <p class="font-bold text-[14px]">PHÓ TRƯỞNG PHÒNG</p>
+                            <p class="font-bold text-[13px]">KT. TRƯỞNG PHÒNG</p>
+                            <p class="font-bold text-[13px]">PHÓ TRƯỞNG PHÒNG</p>
                         </div>
-                        <p class="font-bold text-[14px]">Thượng tá Nguyễn Ngọc Ân</p>
+                        <p class="font-bold text-[13px]">Thượng tá Nguyễn Ngọc Ân</p>
                     </div>
                 </div>
 
@@ -219,7 +262,7 @@
 
     </main>
 
-    <!-- Modal: Personnel List -->
+    <!-- Modal: Personnel List (Hidden when printing) -->
     <div id="modal-personnel" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 no-print">
         <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full max-h-[90vh] flex flex-col overflow-hidden">
             <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
@@ -273,7 +316,7 @@
         </div>
     </div>
 
-    <!-- Footer -->
+    <!-- Footer (Hidden when printing) -->
     <footer class="bg-white border-t border-slate-200 py-3.5 text-center text-xs text-slate-500 no-print">
         <p>Phần mềm Tách Tổ Tuần Tra CSGT — Phục vụ công tác chuyên môn & Ghi Sổ Nhật Ký Tuần Tra (NKTT)</p>
     </footer>

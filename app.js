@@ -18,7 +18,7 @@ const DEFAULT_OFFICERS = [
 // Initialize State
 let officersList = JSON.parse(localStorage.getItem('tv_officers') || JSON.stringify(DEFAULT_OFFICERS));
 let currentPdfFile = null;
-let parsedSchedule = []; // Array of day objects with tv_tos
+let parsedSchedule = [];
 
 // DOM Elements
 const pdfFileInput = document.getElementById('pdf-file-input');
@@ -53,7 +53,6 @@ if (window.lucide) {
     lucide.createIcons();
 }
 
-// Update Personnel UI
 function renderPersonnelModal() {
     officerCountBadge.innerText = officersList.length;
     personnelTableBody.innerHTML = '';
@@ -121,7 +120,6 @@ btnResetDefaultOfficers.addEventListener('click', () => {
     }
 });
 
-// Handle File Selection
 pdfFileInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file && file.type === 'application/pdf') {
@@ -133,12 +131,10 @@ pdfFileInput.addEventListener('change', (e) => {
     }
 });
 
-// Configure PDF.js Worker
 if (window.pdfjsLib) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 }
 
-// Process PDF
 btnProcess.addEventListener('click', async () => {
     if (!currentPdfFile) return;
 
@@ -452,29 +448,30 @@ function renderScheduleTable() {
 
         day.tvTos.forEach((s, idx) => {
             const tr = document.createElement('tr');
-            tr.className = 'border-b border-slate-900 align-top';
+            tr.className = 'border-b border-black align-top';
 
             let col1Html = '';
             if (idx === 0) {
                 col1Html = `
-                    <td rowspan="${day.tvTos.length}" class="py-3 px-2 text-center align-middle font-bold text-slate-900 border border-slate-900 bg-slate-50/50">
+                    <td rowspan="${day.tvTos.length}" class="py-2.5 px-1.5 text-center align-middle font-bold text-black border border-black bg-slate-50/40">
                         <div class="font-bold text-[13px]">${escapeHtml(day.day)}</div>
-                        <div class="text-[12px] text-slate-700 mt-1">${escapeHtml(day.date)}</div>
+                        <div class="text-[12px] text-slate-800 mt-1">${escapeHtml(day.date)}</div>
                     </td>
                 `;
             }
 
+            // Column 2: Tên Tổ (bold), Tên cán bộ (bold), Tổ trưởng/Tổ viên (regular)
             let col2Html = s.col2Lines.map(l => {
                 let esc = escapeHtml(l);
                 if (/^Tổ\s+\d+/i.test(l)) {
                     return `<div class="font-bold text-[13px] mb-1">${esc}</div>`;
                 }
                 if (l === 'Tổ trưởng' || l === 'Tổ viên' || l === 'Tổ  viên' || l === 'Tổ phó') {
-                    return `<div class="font-normal text-slate-700">${esc}</div>`;
+                    return `<div class="font-normal text-slate-800">${esc}</div>`;
                 }
                 const m = l.match(/^(.*?)(Tổ\s+trưởng|Tổ\s+viên|Tổ\s+phó)$/i);
                 if (m) {
-                    return `<div><strong class="font-bold">${escapeHtml(m[1].trim())}</strong> <span class="font-normal text-slate-700">${escapeHtml(m[2])}</span></div>`;
+                    return `<div><strong class="font-bold">${escapeHtml(m[1].trim())}</strong> <span class="font-normal text-slate-800">${escapeHtml(m[2])}</span></div>`;
                 }
                 if (/^\d+\.\s*(Đ\/c|[A-ZÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬ])/i.test(l) || l.includes('Đ/c')) {
                     return `<div class="font-bold">${esc}</div>`;
@@ -489,19 +486,19 @@ function renderScheduleTable() {
 
             tr.innerHTML = `
                 ${col1Html}
-                <td class="py-2.5 px-2 border border-slate-900 text-[12px] leading-snug">
+                <td class="py-2 px-1.5 border border-black text-[12px] leading-snug">
                     ${col2Html}
                 </td>
-                <td class="py-2.5 px-2 border border-slate-900 text-[12px] leading-snug text-center">
+                <td class="py-2 px-1.5 border border-black text-[12px] leading-snug text-center">
                     ${col3Html}
                 </td>
-                <td class="py-2.5 px-2 border border-slate-900 text-[12px] leading-snug">
+                <td class="py-2 px-1.5 border border-black text-[12px] leading-snug">
                     ${col4Html}
                 </td>
-                <td class="py-2.5 px-2 border border-slate-900 text-[12px] leading-snug">
+                <td class="py-2 px-1.5 border border-black text-[12px] leading-snug">
                     ${col5Html}
                 </td>
-                <td class="py-2.5 px-2 border border-slate-900 text-[12px] leading-snug">
+                <td class="py-2 px-1.5 border border-black text-[12px] leading-snug">
                     ${col6Html}
                 </td>
             `;
@@ -548,7 +545,7 @@ function renderCol6LinesHtml(lines) {
     }).join('');
 }
 
-// Export Word Document (.docx) with Full Style and Border Definitions
+// Export Word Document (.docx)
 btnExportDocx.addEventListener('click', async () => {
     if (!parsedSchedule || parsedSchedule.length === 0) {
         alert("Vui lòng tải lên và xử lý file PDF trước khi xuất Word!");
@@ -617,7 +614,7 @@ btnExportDocx.addEventListener('click', async () => {
 
         let tableRowsXml = '';
 
-        // Header Row 1: "Nội dung"
+        // Row 1: "Nội dung"
         tableRowsXml += `
         <w:tr>
             <w:trPr><w:tblHeader/><w:cantSplit/></w:trPr>
@@ -641,7 +638,7 @@ btnExportDocx.addEventListener('click', async () => {
             </w:tc>
         </w:tr>`;
 
-        // Header Row 2: Columns Header
+        // Row 2: Headers
         const colHeaders = [
             { t: "Ngày, tháng", w: 1300 },
             { t: "Tổ Cảnh sát\ngiao thông", w: 2200 },
@@ -786,12 +783,12 @@ btnExportDocx.addEventListener('click', async () => {
             </w:tblBorders>
         </w:tblPr>
         <w:tblGrid>
-            <w:gridCol w:w="1300"/>
-            <w:gridCol w:w="2200"/>
-            <w:gridCol w:w="1300"/>
-            <w:gridCol w:w="3600"/>
-            <w:gridCol w:w="2900"/>
-            <w:gridCol w:w="3700"/>
+            <w:gridCol w:w="{col_widths[0]}"/>
+            <w:gridCol w:w="{col_widths[1]}"/>
+            <w:gridCol w:w="{col_widths[2]}"/>
+            <w:gridCol w:w="{col_widths[3]}"/>
+            <w:gridCol w:w="{col_widths[4]}"/>
+            <w:gridCol w:w="{col_widths[5]}"/>
         </w:tblGrid>
         ${tableRowsXml}
     </w:tbl>

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phần Mềm Tách Tổ Tuần Tra - Kế Hoạch Tuần CSGT</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- JSZip for generating docx client-side -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        .tab-active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: 600; }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header / Navbar -->
+    <header class="bg-gradient-to-r from-red-700 via-red-800 to-amber-700 text-white shadow-lg no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="bg-amber-400 text-red-900 p-2.5 rounded-xl shadow-md flex items-center justify-center font-bold text-xl">
+                    <i data-lucide="shield-check" class="w-7 h-7"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">TÁCH TỔ TUẦN TRA - KẾ HOẠCH TUẦN CSGT</h1>
+                    <p class="text-xs text-red-100 opacity-90">Công cụ tự động lọc ca trực Tổ Trà Vinh / Tổ Đội từ Kế hoạch tuần (Mẫu 03/TT)</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="btn-open-personnel" class="flex items-center gap-2 px-3 py-1.5 bg-red-900/60 hover:bg-red-900 text-xs font-medium rounded-lg border border-red-400/30 transition">
+                    <i data-lucide="users" class="w-4 h-4"></i>
+                    <span>Danh sách Cán bộ (<span id="officer-count-badge">13</span>)</span>
+                </button>
+                <a href="https://github.com" target="_blank" class="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-xs font-medium rounded-lg transition">
+                    <i data-lucide="github" class="w-4 h-4"></i>
+                    <span>GitHub</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Step 1: Upload & Controls Card -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 no-print">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                <!-- Dropzone -->
+                <div class="lg:col-span-8">
+                    <label for="pdf-file-input" class="relative border-2 border-dashed border-slate-300 hover:border-blue-500 bg-slate-50 hover:bg-blue-50/50 rounded-2xl p-6 transition flex flex-col items-center justify-center cursor-pointer text-center group">
+                        <input id="pdf-file-input" type="file" accept=".pdf" class="sr-only">
+                        <div class="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-3 group-hover:scale-110 transition">
+                            <i data-lucide="file-up" class="w-6 h-6"></i>
+                        </div>
+                        <p class="text-sm font-semibold text-slate-700 mb-1" id="upload-status-text">
+                            Kéo thả hoặc nhấn để chọn file PDF Kế hoạch tuần
+                        </p>
+                        <p class="text-xs text-slate-500" id="upload-detail-text">
+                            Hỗ trợ file PDF Kế hoạch tuần công tác (Mẫu số 03/TT của Bộ Công an)
+                        </p>
+                    </label>
+                </div>
+
+                <!-- Action Button & Summary -->
+                <div class="lg:col-span-4 flex flex-col gap-3 justify-center">
+                    <button id="btn-process" disabled class="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                        <i data-lucide="cpu" class="w-5 h-5"></i>
+                        <span id="btn-process-text">Bắt đầu tách ca Tổ Trà Vinh</span>
+                    </button>
+                    <div class="flex items-center justify-between text-xs text-slate-500 px-1">
+                        <span>Trạng thái: <strong id="status-label" class="text-slate-700">Chờ nạp file</strong></span>
+                        <span id="progress-indicator" class="hidden text-blue-600 font-medium">Đang xử lý...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress bar -->
+            <div id="progress-container" class="hidden mt-4">
+                <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                    <div id="progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <div class="flex justify-between text-xs text-slate-500 mt-1.5">
+                    <span id="progress-text">Đang phân tích tài liệu...</span>
+                    <span id="progress-pct">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Result Section (Hidden until processed) -->
+        <div id="result-section" class="hidden space-y-6">
+
+            <!-- Stats Bar -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                    <div class="text-xs font-medium text-slate-500 uppercase tracking-wider">Tổng số ca Trà Vinh</div>
+                    <div class="text-2xl font-bold text-blue-600 mt-1" id="stat-total-shifts">0</div>
+                    <div class="text-xs text-slate-400 mt-0.5">Trên toàn bộ kế hoạch tuần</div>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                    <div class="text-xs font-medium text-slate-500 uppercase tracking-wider">Số ngày có ca trực</div>
+                    <div class="text-2xl font-bold text-emerald-600 mt-1" id="stat-total-days">7 / 7</div>
+                    <div class="text-xs text-slate-400 mt-0.5">Từ Thứ Hai đến Chủ Nhật</div>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                    <div class="text-xs font-medium text-slate-500 uppercase tracking-wider">Cán bộ tham gia</div>
+                    <div class="text-2xl font-bold text-indigo-600 mt-1" id="stat-active-officers">0</div>
+                    <div class="text-xs text-slate-400 mt-0.5">Được bố trí trong lịch tuần</div>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                    <div class="text-xs font-medium text-slate-500 uppercase tracking-wider">Thời gian áp dụng</div>
+                    <div class="text-sm font-bold text-slate-700 mt-2 truncate" id="stat-plan-dates">Tuần 40 (28/9 - 04/10)</div>
+                    <div class="text-xs text-slate-400 mt-0.5">Đội CSGT Đường bộ</div>
+                </div>
+            </div>
+
+            <!-- Toolbar & Export Actions -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-4 no-print">
+                <!-- Search & Filters -->
+                <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                    <div class="relative flex-1 sm:w-64">
+                        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                        <input id="filter-search" type="text" placeholder="Tìm tên cán bộ, tuyến, xe..." class="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <select id="filter-day" class="text-sm bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="all">Tất cả các ngày (T2-CN)</option>
+                        <option value="Thứ hai">Thứ hai</option>
+                        <option value="Thứ ba">Thứ ba</option>
+                        <option value="Thứ tư">Thứ tư</option>
+                        <option value="Thứ năm">Thứ năm</option>
+                        <option value="Thứ sáu">Thứ sáu</option>
+                        <option value="Thứ bảy">Thứ bảy</option>
+                        <option value="Chủ nhật">Chủ nhật</option>
+                    </select>
+                </div>
+
+                <!-- Export Buttons -->
+                <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                    <button id="btn-export-docx" class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-sm transition">
+                        <i data-lucide="file-text" class="w-4 h-4"></i>
+                        <span>Xuất file Word (.docx)</span>
+                    </button>
+                    <button onclick="window.print()" class="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition">
+                        <i data-lucide="printer" class="w-4 h-4"></i>
+                        <span>In / PDF</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Schedule Table Card -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-800">KẾ HOẠCH TUẦN TRA - TỔ TRÀ VINH</h2>
+                        <p class="text-xs text-slate-500" id="table-subtitle">Đã tự động gộp dòng ngày/tháng để dễ theo d��i và ghi sổ Nhật ký tuần tra</p>
+                    </div>
+                    <span class="text-xs font-semibold px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full" id="matching-badge">
+                        0 ca phù hợp
+                    </span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-700 border-b border-slate-200 text-xs font-semibold uppercase tracking-wider">
+                                <th class="py-3 px-3 w-28 text-center border-r border-slate-200">Ngày, tháng</th>
+                                <th class="py-3 px-3 w-48 border-r border-slate-200">Tổ CSGT</th>
+                                <th class="py-3 px-3 w-28 border-r border-slate-200">Lực lượng khác</th>
+                                <th class="py-3 px-3 min-w-[240px] border-r border-slate-200">Hình thức TTKS</th>
+                                <th class="py-3 px-3 min-w-[200px] border-r border-slate-200">Nhiệm vụ</th>
+                                <th class="py-3 px-3 min-w-[240px]">Phương tiện, thiết bị, CCHT</th>
+                            </tr>
+                        </thead>
+                        <tbody id="schedule-table-body" class="divide-y divide-slate-200 text-slate-700">
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Modal: Manage Personnel List -->
+    <div id="modal-personnel" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <div class="flex items-center gap-2.5">
+                    <div class="p-2 bg-blue-100 text-blue-600 rounded-lg">
+                        <i data-lucide="users" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800">Danh sách Cán bộ Tổ Trà Vinh</h3>
+                        <p class="text-xs text-slate-500">Các ca có tên cán bộ trong danh sách này sẽ được lọc ra</p>
+                    </div>
+                </div>
+                <button id="btn-close-modal" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- List body -->
+            <div class="p-5 overflow-y-auto flex-1 space-y-3">
+                <div class="flex items-center gap-2">
+                    <input id="input-new-officer" type="text" placeholder="Nhập họ và tên cán bộ mới..." class="flex-1 px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button id="btn-add-officer" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow-sm transition flex items-center gap-1">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span>Thêm</span>
+                    </button>
+                </div>
+
+                <div class="border border-slate-200 rounded-xl overflow-hidden">
+                    <table class="w-full text-left text-xs sm:text-sm">
+                        <thead class="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
+                            <tr>
+                                <th class="py-2.5 px-3 w-12 text-center">STT</th>
+                                <th class="py-2.5 px-3">Họ và tên Cán bộ</th>
+                                <th class="py-2.5 px-3 w-16 text-center">Xóa</th>
+                            </tr>
+                        </thead>
+                        <tbody id="personnel-table-body" class="divide-y divide-slate-100">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+                <button id="btn-reset-default-officers" class="text-xs text-red-600 hover:text-red-700 font-medium">
+                    Khôi phục 13 đ/c mặc định
+                </button>
+                <button id="btn-save-personnel" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold rounded-lg shadow transition">
+                    Xong & Lưu lại
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500 no-print">
+        <p>Phần mềm Tách Tổ Tuần Tra CSGT — Hỗ trợ phục vụ ghi Sổ Nhật Ký Tuần Tra (NKTT) & Công tác chuyên môn</p>
+    </footer>
+
+    <!-- App Logic Script -->
+    <script src="app.js"></script>
+</body>
+</html>

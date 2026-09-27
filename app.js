@@ -36,6 +36,7 @@ const scheduleTableBody = document.getElementById('schedule-table-body');
 const statTotalShiftsBadge = document.getElementById('stat-total-shifts-badge');
 const statDaysBadge = document.getElementById('stat-days-badge');
 const btnExportDocx = document.getElementById('btn-export-docx');
+const btnPrintPdf = document.getElementById('btn-print-pdf');
 
 // Personnel Modal Elements
 const modalPersonnel = document.getElementById('modal-personnel');
@@ -51,6 +52,18 @@ const btnResetDefaultOfficers = document.getElementById('btn-reset-default-offic
 // Initialize Lucide Icons
 if (window.lucide) {
     lucide.createIcons();
+}
+
+// Print Handler (Clears browser header/footer during printing)
+if (btnPrintPdf) {
+    btnPrintPdf.addEventListener('click', () => {
+        const origTitle = document.title;
+        document.title = ""; // Hides website title from print header
+        window.print();
+        setTimeout(() => {
+            document.title = origTitle;
+        }, 1000);
+    });
 }
 
 function renderPersonnelModal() {
@@ -120,6 +133,7 @@ btnResetDefaultOfficers.addEventListener('click', () => {
     }
 });
 
+// Handle File Selection
 pdfFileInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file && file.type === 'application/pdf') {
@@ -131,10 +145,12 @@ pdfFileInput.addEventListener('change', (e) => {
     }
 });
 
+// Configure PDF.js Worker
 if (window.pdfjsLib) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 }
 
+// Process PDF
 btnProcess.addEventListener('click', async () => {
     if (!currentPdfFile) return;
 
@@ -191,7 +207,7 @@ btnProcess.addEventListener('click', async () => {
             allRuns.push(...items);
         }
 
-        progressText.innerText = "Đang tách các ca thuộc Tổ Trà Vinh...";
+        progressText.innerText = "Đang tách các ca thuộc Tổ Trà Vinh và giữ đúng 100% mẫu...";
         progressBar.style.width = `85%`;
         progressPct.innerText = `85%`;
 
@@ -290,8 +306,75 @@ function cleanCellLines(lines) {
     if (!lines || lines.length === 0) return [];
     let raw = lines.join('\n');
 
+    // 1. Fix chainages: e.g. Km 56 +700 đến Km 65 +450 -> Km 56+700 đến Km 65+450
+    raw = raw.replace(/Km\s+(\d+)\s+đến\s+Km\s*\+(\d+)\+(\d+)\s+(\d+)/g, 'Km $1+$2 đến Km $4+$3');
+    raw = raw.replace(/Km\s+(\d+)\s*\+(\d+)\s+đến\s+Km\s+(\d+)\s*\+(\d+)/g, 'Km $1+$2 đến Km $3+$4');
     raw = raw.replace(/Km\s+(\d+)\s*\n*\s*\+(\d+)/g, 'Km $1+$2');
     raw = raw.replace(/(\d+)\s*\n*\s*\+(\d+)/g, '$1+$2');
+
+    // 2. Comprehensive glued words dictionary
+    const gluedReplacements = [
+        [/củaChínhphủ/gi, 'của Chính phủ'],
+        [/Chínhphủ/gi, 'Chính phủ'],
+        [/củaChính/gi, 'của Chính'],
+        [/Cácbi��umẫutheothôngtư/gi, 'Các biểu mẫu theo Thông tư '],
+        [/CácbiểumẫutheoNghịđịnh/gi, 'Các biểu mẫu theo Nghị định '],
+        [/theothôngtư/gi, 'theo Thông tư '],
+        [/theoNghịđịnh/gi, 'theo Nghị định '],
+        [/BCAngày/gi, 'BCA ngày '],
+        [/vềĐTGLTNGT/gi, 'về ĐTGQTNGT'],
+        [/vềĐTGQTNGT/gi, 'về ĐTGQTNGT'],
+        [/Audaxseri/gi, 'Audax seri: '],
+        [/seriAU/gi, 'seri: AU'],
+        [/nồngđộcồn/gi, 'nồng độ cồn'],
+        [/Lifelocseri/gi, 'Lifeloc seri: '],
+        [/PRODIGY2S/gi, 'PRODIGY 2S'],
+        [/PRODIGYII/gi, 'PRODIGY II'],
+        [/Motorolaseri/gi, 'Motorola seri: '],
+        [/Motorolasêri/gi, 'Motorola seri: '],
+        [/sêri:/gi, 'seri:'],
+        [/súngbắnđạn/gi, 'súng bắn đạn '],
+        [/súngbắnđạncaosu/gi, 'súng bắn đạn cao su '],
+        [/đạncaosu/gi, 'đạn cao su'],
+        [/khóasố/gi, 'khóa số '],
+        [/khóa8/gi, 'khóa số 8'],
+        [/Gậychỉhuy/gi, 'Gậy chỉ huy '],
+        [/giaothông/gi, 'giao thông'],
+        [/đènchiếusáng/gi, 'đèn chiếu sáng'],
+        [/cọctiêuhìnhchópnón/gi, 'cọc tiêu hình chóp nón'],
+        [/cọctiêu/gi, 'cọc tiêu '],
+        [/hìnhchópnón/gi, 'hình chóp nón'],
+        [/điềukiệncầnthiết/gi, 'điều kiện cần thiết '],
+        [/theoquyđịnh/gi, 'theo quy định'],
+        [/Tuyêntruyền/gi, 'Tuyên truyền'],
+        [/điềutra/gi, 'điều tra'],
+        [/giảiquyết/gi, 'giải quyết'],
+        [/tainạngiaothông/gi, 'tai nạn giao thông'],
+        [/khoản1Điều19/gi, 'khoản 1 Điều 19 '],
+        [/Thôngtư73\/2024/gi, 'Thông tư 73/2024'],
+        [/Thựchiện/gi, 'Thực hiện'],
+        [/Kếhoạch/gi, 'Kế hoạch'],
+        [/Đốitượng/gi, 'Đối tượng '],
+        [/kiểmsoát/gi, 'kiểm soát'],
+        [/xửlý/gi, 'xử lý'],
+        [/Người\s*tham\s*gia\s*giao\s*thông\s*đường\s*bộ/gi, 'Người tham gia giao thông đường bộ'],
+        [/Hành\s*vi\s*vi\s*phạm\s*kiểm\s*soát/gi, 'Hành vi vi phạm kiểm soát'],
+        [/Chuyênđề/gi, 'Chuyên đề '],
+        [/xemôtô/gi, 'xe mô tô'],
+        [/xegắnmáy/gi, 'xe gắn máy'],
+        [/kinhdoanhvậntải/gi, 'kinh doanh vận tải'],
+        [/họcsinh/gi, 'học sinh'],
+        [/quátảitrọng/gi, 'quá tải trọng'],
+        [/quákhổgiớihạn/gi, 'quá khổ giới hạn'],
+        [/chuyểnhướng/gi, 'chuyển hướng'],
+        [/khôngquansát/gi, 'không quan sát'],
+        [/phầnđường/gi, 'phần đường'],
+        [/viphạmtốcđộ/gi, 'vi phạm tốc độ']
+    ];
+
+    gluedReplacements.forEach(([pat, rep]) => {
+        raw = raw.replace(pat, rep);
+    });
 
     const clean = [];
     raw.split('\n').forEach(l => {
@@ -310,12 +393,6 @@ function cleanCellLines(lines) {
         l = l.replace(/tỉnhVĩnh/g, 'tỉnh Vĩnh');
         l = l.replace(/Tổ 1 7/g, 'Tổ 17');
         l = l.replace(/họp với/g, 'hợp với');
-
-        l = l.replace(/ngày\s*23\/12\/2021củaChínhphủ/g, 'ngày 23/12/2021 của Chính phủ');
-        l = l.replace(/vềĐTGLTNGT/g, 'về ĐTGQTNGT');
-        l = l.replace(/Audaxseri/g, 'Audax seri: ');
-        l = l.replace(/Chínhphủ/g, 'Chính phủ');
-        l = l.replace(/củaChính/g, 'của Chính');
 
         clean.push(l);
     });
@@ -614,7 +691,7 @@ btnExportDocx.addEventListener('click', async () => {
 
         let tableRowsXml = '';
 
-        // Row 1: "Nội dung"
+        // Header Row 1: "Nội dung"
         tableRowsXml += `
         <w:tr>
             <w:trPr><w:tblHeader/><w:cantSplit/></w:trPr>
@@ -638,7 +715,7 @@ btnExportDocx.addEventListener('click', async () => {
             </w:tc>
         </w:tr>`;
 
-        // Row 2: Headers
+        // Header Row 2: Columns Header
         const colHeaders = [
             { t: "Ngày, tháng", w: 1300 },
             { t: "Tổ Cảnh sát\ngiao thông", w: 2200 },

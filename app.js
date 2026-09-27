@@ -133,7 +133,6 @@ btnResetDefaultOfficers.addEventListener('click', () => {
     }
 });
 
-// Handle File Selection
 pdfFileInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file && file.type === 'application/pdf') {
@@ -145,12 +144,10 @@ pdfFileInput.addEventListener('change', (e) => {
     }
 });
 
-// Configure PDF.js Worker
 if (window.pdfjsLib) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 }
 
-// Process PDF
 btnProcess.addEventListener('click', async () => {
     if (!currentPdfFile) return;
 
@@ -207,7 +204,7 @@ btnProcess.addEventListener('click', async () => {
             allRuns.push(...items);
         }
 
-        progressText.innerText = "Đang tách các ca thuộc Tổ Trà Vinh và giữ đúng 100% mẫu...";
+        progressText.innerText = "Đang tách các ca thuộc Tổ Trà Vinh...";
         progressBar.style.width = `85%`;
         progressPct.innerText = `85%`;
 
@@ -302,6 +299,129 @@ function joinRunsWithSpaces(lineRuns) {
     return res;
 }
 
+function splitGluedVietnameseWords(text) {
+    if (!text) return "";
+    let t = text;
+
+    const replacements = [
+        [/Cácbiểumẫutheothôngtư/gi, 'Các biểu mẫu theo Thông tư '],
+        [/CácbiểumẫutheoNghịđịnh/gi, 'Các biểu mẫu theo Nghị định '],
+        [/Cácbiểumẫu/gi, 'Các biểu mẫu '],
+        [/biểumẫutheothôngtư/gi, 'biểu mẫu theo Thông tư '],
+        [/biểumẫutheoNghịđịnh/gi, 'biểu mẫu theo Nghị định '],
+        [/biểumẫu/gi, 'biểu mẫu '],
+        [/theothôngtư/gi, 'theo Thông tư '],
+        [/theoNghịđịnh/gi, 'theo Nghị định '],
+        [/thôngtư(\d+)/gi, 'Thông tư $1'],
+        [/Nghịđịnh(\d+)/gi, 'Nghị định $1'],
+        [/BCAngày/gi, 'BCA ngày '],
+        [/CPngày/gi, 'CP ngày '],
+        [/vềĐTGLTNGT/gi, 'về ĐTGQTNGT'],
+        [/vềĐTGQTNGT/gi, 'về ĐTGQTNGT'],
+        [/củaChínhphủ/gi, 'của Chính phủ'],
+        [/Chínhphủ/gi, 'Chính phủ'],
+        [/củaChính/gi, 'của Chính'],
+        [/sửađổi,bổsung/gi, 'sửa đổi, bổ sung'],
+        [/sửađổi,bổ/gi, 'sửa đổi, bổ '],
+        [/bổsung/gi, 'bổ sung'],
+        [/Va\s*ly\s*KNHT/gi, 'Va ly KNHT'],
+
+        [/Motorolaseri/gi, 'Motorola seri: '],
+        [/Motorolasêri/gi, 'Motorola seri: '],
+        [/Audaxseri/gi, 'Audax seri: '],
+        [/Audaxsêri/gi, 'Audax seri: '],
+        [/Lifelocseri/gi, 'Lifeloc seri: '],
+        [/ProdigyII/gi, 'Prodigy II'],
+        [/Prodigy2S/gi, 'Prodigy 2S'],
+        [/PRODIGY2S/gi, 'PRODIGY 2S'],
+        [/PRODIGYII/gi, 'PRODIGY II'],
+        [/Máyđonồngđộcồn/gi, 'Máy đo nồng độ cồn '],
+        [/đonồngđộcồn/gi, 'đo nồng độ cồn '],
+        [/nồngđộcồn/gi, 'nồng độ cồn'],
+        [/súngbắnđạncaosu/gi, 'súng bắn đạn cao su '],
+        [/súngbắnđạncao/gi, 'súng bắn đạn cao '],
+        [/súngbắnđạn/gi, 'súng bắn đạn '],
+        [/bắnđạncaosu/gi, 'bắn đạn cao su '],
+        [/bắnđạncao/gi, 'bắn đạn cao '],
+        [/đạncaosu/gi, 'đạn cao su'],
+        [/khóasố8/gi, 'khóa số 8'],
+        [/khóasố/gi, 'khóa số '],
+        [/khóa8/gi, 'khóa số 8'],
+        [/Gậychỉhuygiaothông/gi, 'Gậy chỉ huy giao thông'],
+        [/Gậychỉhuy/gi, 'Gậy chỉ huy '],
+        [/chỉhuygiaothông/gi, 'chỉ huy giao thông'],
+        [/giaothông/gi, 'giao thông'],
+        [/cọctiêuhìnhchópnón/gi, 'cọc tiêu hình chóp nón'],
+        [/cọctiêu/gi, 'cọc tiêu '],
+        [/hìnhchópnón/gi, 'hình chóp nón'],
+        [/đènchiếusáng/gi, 'đèn chiếu sáng'],
+        [/chiếusáng/gi, 'chiếu sáng'],
+        [/điềukiệncầnthiết/gi, 'điều kiện cần thiết '],
+        [/điềukiện/gi, 'điều kiện '],
+        [/cầnthiếtkhác/gi, 'cần thiết khác '],
+        [/theoquyđịnh/gi, 'theo quy định'],
+        [/quyđịnh/gi, 'quy định'],
+        [/Cânkiểmtratảitrọng/gi, 'Cân kiểm tra tải trọng '],
+        [/kiểmtratảitrọng/gi, 'kiểm tra tải trọng '],
+        [/tảitrọng/gi, 'tải trọng'],
+        [/Máyđotốcđộ/gi, 'Máy đo tốc độ '],
+        [/đotốcđộ/gi, 'đo tốc độ '],
+        [/SpeedLidar/gi, 'Speed Lidar '],
+        [/Máycamera/gi, 'Máy camera '],
+        [/Thẻnhớ/gi, 'Thẻ nhớ '],
+        [/Thẻnhớngoài/gi, 'Thẻ nhớ ngoài '],
+        [/MáyquaySony/gi, 'Máy quay Sony '],
+        [/Máyquay/gi, 'Máy quay '],
+
+        [/Tuầntra,kiểmsoátcơđộng/gi, 'Tuần tra, kiểm soát cơ động'],
+        [/Tuầntra,kiểmsoát/gi, 'Tuần tra, kiểm soát '],
+        [/kiểmsoátcơđộng/gi, 'kiểm soát cơ động'],
+        [/cơđộng:\+\d+/gi, 'cơ động:'],
+        [/cơđộng:/gi, 'cơ động:'],
+        [/:\+\d+/gi, ':'],
+        [/Kiểmsoáttại01điểm/gi, 'Kiểm soát tại 01 điểm '],
+        [/Kiểmsoáttạimộtđiểm/gi, 'Kiểm soát tại một điểm '],
+        [/trênđườnggiaothông/gi, 'trên đường giao thông'],
+        [/đườnggiaothông/gi, 'đường giao thông'],
+        [/Đốitượngkiểmsoát,xửlý/gi, 'Đối tượng kiểm soát, xử lý'],
+        [/Đốitượngcầntậptrung/gi, 'Đối tượng cần tập trung '],
+        [/Đốitượng/gi, 'Đối tượng '],
+        [/kiểmsoát,xửlý/gi, 'kiểm soát, xử lý'],
+        [/Người\s*tham\s*gia\s*giao\s*thông\s*đường\s*bộ/gi, 'Người tham gia giao thông đường bộ'],
+        [/Ngườivàphươngtiện/gi, 'Người và phương tiện '],
+        [/Hànhviviphạmkiểmsoát,xửlýtheochuyênđềgồm/gi, 'Hành vi vi phạm kiểm soát, xử lý theo chuyên đề gồm:'],
+        [/Hànhviviphạmkiểmsoát,xửlý/gi, 'Hành vi vi phạm kiểm soát, xử lý'],
+        [/Hànhviviphạm/gi, 'Hành vi vi phạm '],
+        [/theochuyênđềgồm/gi, 'theo chuyên đề gồm: '],
+        [/Chuyênđềxeba,bốnbánh/gi, 'Chuyên đề xe ba, bốn bánh '],
+        [/tựsảnxuất,lắpráp/gi, 'tự sản xuất, lắp ráp '],
+        [/xemôtô,xegắnmáy/gi, 'xe mô tô, xe gắn máy '],
+        [/xekinhdoanhvậntải/gi, 'xe kinh doanh vận tải'],
+        [/kinhdoanhvậntải/gi, 'kinh doanh vận tải'],
+        [/Láixekinhdoanhvậntải/gi, 'Lái xe kinh doanh vận tải '],
+        [/Chuyênđềhọcsinh/gi, 'Chuyên đề học sinh'],
+        [/Chuyênđềchởhàngquátảitrọng,quákhổgiớihạn/gi, 'Chuyên đề chở hàng quá tải trọng, quá khổ giới hạn'],
+        [/Chuyênđềnồngđộcồn/gi, 'Chuyên đề nồng độ cồn'],
+        [/chuyểnhướngkhôngquansát/gi, 'chuyển hướng không quan sát'],
+        [/đikhôngđúngphầnđường/gi, 'đi không đúng phần đường'],
+        [/viphạmtốcđộ/gi, 'vi phạm tốc độ'],
+        [/Phòngchốngđuaxetráiphép/gi, 'Phòng chống đua xe trái phép'],
+        [/đuaxetráiphép/gi, 'đua xe trái phép'],
+        [/Tuyêntruyền,điềutra,giảiquyếttainạngiaothông/gi, 'Tuyên truyền, điều tra, giải quyết tai nạn giao thông'],
+        [/Tuyêntruyền,điềutra/gi, 'Tuyên truyền, điều tra'],
+        [/giảiquyếttainạngiaothông/gi, 'giải quyết tai nạn giao thông'],
+        [/theokhoản1Điều19/gi, 'theo khoản 1 Điều 19 '],
+        [/Thôngtư73\/2024\/TT-BCAngày15\/11\/2024/gi, 'Thông tư 73/2024/TT-BCA ngày 15/11/2024']
+    ];
+
+    replacements.forEach(([pat, rep]) => {
+        t = t.replace(pat, rep);
+    });
+
+    t = t.replace(/[ \t]+/g, ' ');
+    return t.trim();
+}
+
 function cleanCellLines(lines) {
     if (!lines || lines.length === 0) return [];
     let raw = lines.join('\n');
@@ -311,70 +431,6 @@ function cleanCellLines(lines) {
     raw = raw.replace(/Km\s+(\d+)\s*\+(\d+)\s+đến\s+Km\s+(\d+)\s*\+(\d+)/g, 'Km $1+$2 đến Km $3+$4');
     raw = raw.replace(/Km\s+(\d+)\s*\n*\s*\+(\d+)/g, 'Km $1+$2');
     raw = raw.replace(/(\d+)\s*\n*\s*\+(\d+)/g, '$1+$2');
-
-    // 2. Comprehensive glued words dictionary
-    const gluedReplacements = [
-        [/củaChínhphủ/gi, 'của Chính phủ'],
-        [/Chínhphủ/gi, 'Chính phủ'],
-        [/củaChính/gi, 'của Chính'],
-        [/Cácbi��umẫutheothôngtư/gi, 'Các biểu mẫu theo Thông tư '],
-        [/CácbiểumẫutheoNghịđịnh/gi, 'Các biểu mẫu theo Nghị định '],
-        [/theothôngtư/gi, 'theo Thông tư '],
-        [/theoNghịđịnh/gi, 'theo Nghị định '],
-        [/BCAngày/gi, 'BCA ngày '],
-        [/vềĐTGLTNGT/gi, 'về ĐTGQTNGT'],
-        [/vềĐTGQTNGT/gi, 'về ĐTGQTNGT'],
-        [/Audaxseri/gi, 'Audax seri: '],
-        [/seriAU/gi, 'seri: AU'],
-        [/nồngđộcồn/gi, 'nồng độ cồn'],
-        [/Lifelocseri/gi, 'Lifeloc seri: '],
-        [/PRODIGY2S/gi, 'PRODIGY 2S'],
-        [/PRODIGYII/gi, 'PRODIGY II'],
-        [/Motorolaseri/gi, 'Motorola seri: '],
-        [/Motorolasêri/gi, 'Motorola seri: '],
-        [/sêri:/gi, 'seri:'],
-        [/súngbắnđạn/gi, 'súng bắn đạn '],
-        [/súngbắnđạncaosu/gi, 'súng bắn đạn cao su '],
-        [/đạncaosu/gi, 'đạn cao su'],
-        [/khóasố/gi, 'khóa số '],
-        [/khóa8/gi, 'khóa số 8'],
-        [/Gậychỉhuy/gi, 'Gậy chỉ huy '],
-        [/giaothông/gi, 'giao thông'],
-        [/đènchiếusáng/gi, 'đèn chiếu sáng'],
-        [/cọctiêuhìnhchópnón/gi, 'cọc tiêu hình chóp nón'],
-        [/cọctiêu/gi, 'cọc tiêu '],
-        [/hìnhchópnón/gi, 'hình chóp nón'],
-        [/điềukiệncầnthiết/gi, 'điều kiện cần thiết '],
-        [/theoquyđịnh/gi, 'theo quy định'],
-        [/Tuyêntruyền/gi, 'Tuyên truyền'],
-        [/điềutra/gi, 'điều tra'],
-        [/giảiquyết/gi, 'giải quyết'],
-        [/tainạngiaothông/gi, 'tai nạn giao thông'],
-        [/khoản1Điều19/gi, 'khoản 1 Điều 19 '],
-        [/Thôngtư73\/2024/gi, 'Thông tư 73/2024'],
-        [/Thựchiện/gi, 'Thực hiện'],
-        [/Kếhoạch/gi, 'Kế hoạch'],
-        [/Đốitượng/gi, 'Đối tượng '],
-        [/kiểmsoát/gi, 'kiểm soát'],
-        [/xửlý/gi, 'xử lý'],
-        [/Người\s*tham\s*gia\s*giao\s*thông\s*đường\s*bộ/gi, 'Người tham gia giao thông đường bộ'],
-        [/Hành\s*vi\s*vi\s*phạm\s*kiểm\s*soát/gi, 'Hành vi vi phạm kiểm soát'],
-        [/Chuyênđề/gi, 'Chuyên đề '],
-        [/xemôtô/gi, 'xe mô tô'],
-        [/xegắnmáy/gi, 'xe gắn máy'],
-        [/kinhdoanhvậntải/gi, 'kinh doanh vận tải'],
-        [/họcsinh/gi, 'học sinh'],
-        [/quátảitrọng/gi, 'quá tải trọng'],
-        [/quákhổgiớihạn/gi, 'quá khổ giới hạn'],
-        [/chuyểnhướng/gi, 'chuyển hướng'],
-        [/khôngquansát/gi, 'không quan sát'],
-        [/phầnđường/gi, 'phần đường'],
-        [/viphạmtốcđộ/gi, 'vi phạm tốc độ']
-    ];
-
-    gluedReplacements.forEach(([pat, rep]) => {
-        raw = raw.replace(pat, rep);
-    });
 
     const clean = [];
     raw.split('\n').forEach(l => {
@@ -393,6 +449,9 @@ function cleanCellLines(lines) {
         l = l.replace(/tỉnhVĩnh/g, 'tỉnh Vĩnh');
         l = l.replace(/Tổ 1 7/g, 'Tổ 17');
         l = l.replace(/họp với/g, 'hợp với');
+
+        // Apply word splitter
+        l = splitGluedVietnameseWords(l);
 
         clean.push(l);
     });
@@ -844,7 +903,7 @@ btnExportDocx.addEventListener('click', async () => {
     </w:p>
     <w:p>
         <w:pPr><w:jc w:val="both"/><w:spacing w:after="150" w:line="260" w:lineRule="auto"/></w:pPr>
-        <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:sz w:val="22"/></w:rPr><w:t>1. Thực hiện Kế hoạch số 121/KH-PC08 ngày 22/10/2024 của Phòng PC08, Công an tỉnh Vĩnh Long về thực hiện cao điểm tổng rà soát, phát hiện, thống kê người điều khiển phương tiện mà trong cơ thể có chất ma túy; các điểm, tụ điểm phức tạp về ma túy và đấu tranh, phòng chống tội phạm về ma túy của lực lượng Cảnh sát giao thông trên địa bàn tỉnh; Kế hoạch số 2487/KH-CAT ngày 30/12/2025 của Công an tỉnh về huy động lực lượng khác trong Công an tỉnh phối hợp tuần tra, kiểm soát bảo đảm trật tự, an toàn giao thông đường bộ; Kế hoạch 22/KH-PC08 ngày 18/3/2026 của Phòng PC08 về việc tuần tra, kiểm tra, kiểm soát, xử lý các chuyên đề vi phạm là nguyên nhân chính gây tai nạn giao thông trên các tuyến giao thông đường bộ; Kế hoạch số 166/KH-PC08 ngày 09/6/2026 của Phòng PC08 về việc thực hiện cao điểm phối hợp tuyên truyền, tấn công trấn áp tội phạm về ma tuý giữa Việt Nam, Trung Quốc, Lào và Myanmar trên các tuyến giao thông của lực lượng Cảnh sát giao thông; Kế hoạch số 399/KH-CAT-PC08 ngày 25/8/2026 của Công an tỉnh về tổng kiểm soát, xử lý vi phạm về trật tự an toàn giao thông đường bộ đối với phương tiện kinh doanh vận tải trên địa bàn tỉnh; Kế hoạch số 197/KH-PC08 ngày 14/9/2026 của Phòng PC08 về việc phối hợp tuần tra, kiểm soát phòng, chống đua xe trái phép và phòng chống các loại tội phạm hoạt động theo các tuyến giao thông trên địa bàn tỉnh; Căn cứ kết quả công tác điều tra cơ bản tuyến, điều tra, giải quyết tai nạn giao thông, kết quả xử lý vi phạm giao thông, tình hình trật tự, an toàn giao thông, trật tự xã hội, vi phạm giao thông nổi lên từ ngày 21/9/2026 đến ngày 27/9/2026, Đội Cảnh sát giao thông đường bộ xây dựng kế hoạch công tác tuần như sau:</w:t></w:r>
+        <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:sz w:val="22"/></w:rPr><w:t>1. Thực hiện Kế hoạch số 121/KH-PC08 ngày 22/10/2024 của Phòng PC08, Công an t��nh Vĩnh Long về thực hiện cao điểm tổng rà soát, phát hiện, thống kê người điều khiển phương tiện mà trong cơ thể có chất ma túy; các điểm, tụ điểm phức tạp về ma túy và đấu tranh, phòng chống tội phạm về ma túy của lực lượng Cảnh sát giao thông trên địa bàn tỉnh; Kế hoạch số 2487/KH-CAT ngày 30/12/2025 của Công an tỉnh về huy động lực lượng khác trong Công an tỉnh phối hợp tuần tra, kiểm soát bảo đảm trật tự, an toàn giao thông đường bộ; Kế hoạch 22/KH-PC08 ngày 18/3/2026 của Phòng PC08 về việc tuần tra, kiểm tra, kiểm soát, xử lý các chuyên đề vi phạm là nguyên nhân chính gây tai nạn giao thông trên các tuyến giao thông đường bộ; Kế hoạch số 166/KH-PC08 ngày 09/6/2026 của Phòng PC08 về việc thực hiện cao điểm phối hợp tuyên truyền, tấn công trấn áp tội phạm về ma tuý giữa Việt Nam, Trung Quốc, Lào và Myanmar trên các tuyến giao thông của lực lượng Cảnh sát giao thông; Kế hoạch số 399/KH-CAT-PC08 ngày 25/8/2026 của Công an tỉnh về tổng kiểm soát, xử lý vi phạm về trật tự an toàn giao thông đường bộ đối với phương tiện kinh doanh vận tải trên địa bàn tỉnh; Kế hoạch số 197/KH-PC08 ngày 14/9/2026 của Phòng PC08 về việc phối hợp tuần tra, kiểm soát phòng, chống đua xe trái phép và phòng chống các loại tội phạm hoạt động theo các tuyến giao thông trên địa bàn tỉnh; Căn cứ kết quả công tác điều tra cơ bản tuyến, điều tra, giải quyết tai nạn giao thông, kết quả xử lý vi phạm giao thông, tình hình trật tự, an toàn giao thông, trật tự xã hội, vi phạm giao thông nổi lên từ ngày 21/9/2026 đến ngày 27/9/2026, Đội Cảnh sát giao thông đường bộ xây dựng kế hoạch công tác tuần như sau:</w:t></w:r>
     </w:p>
     <w:tbl>
         <w:tblPr>

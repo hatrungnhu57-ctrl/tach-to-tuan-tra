@@ -204,7 +204,7 @@ btnProcess.addEventListener('click', async () => {
             allRuns.push(...items);
         }
 
-        progressText.innerText = "Đang tách các ca thuộc Tổ Trà Vinh và giữ đúng 100% mẫu...";
+        progressText.innerText = "Đang tách các ca thuộc Tổ Trà Vinh...";
         progressBar.style.width = `85%`;
         progressPct.innerText = `85%`;
 
@@ -299,48 +299,16 @@ function joinRunsWithSpaces(lineRuns) {
     return res;
 }
 
-function cleanCellLines(lines) {
-    if (!lines || lines.length === 0) return [];
-    let raw = lines.join('\n');
+function splitGluedVietnameseWords(text) {
+    if (!text) return "";
+    let t = text;
 
-    // 1. Remove stray chainage numbers that attached to header lines
-    raw = raw.replace(/(\*?\s*Tuần tra,\s*kiểm soát\s*cơ động\s*):?\s*\+\d+/gi, '$1:');
-    raw = raw.replace(/(\*?\s*Tuần tra,\s*kiểm soát\s*công khai[^:]*):?\s*\+\d+/gi, '$1:');
-    raw = raw.replace(/(1\.\s*Tuần tra,\s*kiểm soát\s*cơ động\s*):?\s*\+\d+/gi, '$1:');
-    raw = raw.replace(/(2\.\s*Kiểm soát\s*tại[^:]*):?\s*\+\d+/gi, '$1:');
-    raw = raw.replace(/:\s*\+\d+/g, ':');
-
-    // 2. Standardize Route 1 (Trà Vinh cũ): QL53 (Km 43+108 -> 166+858), QL53B, QL54 (82+700 -> 148+200), QL60 (11+308 -> 101+226)
-    if (raw.includes('QL53') && (raw.includes('43') || raw.includes('166')) && raw.includes('Trà Vinh cũ')) {
-        raw = raw.replace(
-            /QL53.*?101.*?(?=Các tuyến đường|$)/s,
-            'QL53, từ Km 43+108 đến Km 166+858; QL53B; QL54, từ Km 82+700 đến Km 148+200; QL60, từ Km 11+308 đến Km 101+226; '
-        );
-    }
-
-    // 3. Standardize Route 2 (Trà Vinh, Nguyệt Hóa...): QL53 (Km 56+700 -> 65+450), QL54 (144+450 -> 148+200), QL60 (71 -> 72)
-    if (raw.includes('QL53') && (raw.includes('56') || raw.includes('65')) && (raw.includes('Trà Vinh') || raw.includes('Nguyệt Hóa'))) {
-        raw = raw.replace(
-            /QL53.*?Km\s*72;?/s,
-            'QL53, từ Km 56+700 đến Km 65+450; QL54, từ Km 144+450 đến Km 148+200; QL60, từ Km 71 đến Km 72;'
-        );
-    }
-
-    // 4. General chainage cleaners
-    raw = raw.replace(/Km\s+(\d+)\s+đến\s+Km\s*\+(\d+)\+(\d+)\s+(\d+)/g, 'Km $1+$2 đến Km $4+$3');
-    raw = raw.replace(/Km\s+(\d+)\s*\+(\d+)\s+đến\s+Km\s+(\d+)\s*\+(\d+)/g, 'Km $1+$2 đến Km $3+$4');
-    raw = raw.replace(/Km\s+(\d+)\s*\n*\s*\+(\d+)/g, 'Km $1+$2');
-    raw = raw.replace(/(\d+)\s*\n*\s*\+(\d+)/g, '$1+$2');
-
-    // 5. Comprehensive Glued Words Replacements
-    const gluedReplacements = [
-        [/Các\s*biểu\s*mẫu\s*theo\s*thông\s*tư/gi, 'Các biểu mẫu theo Thông tư '],
-        [/Các\s*biểu\s*mẫu\s*theo\s*nghị\s*định/gi, 'Các biểu mẫu theo Nghị định '],
-        [/biểu\s*mẫu\s*theo\s*thông\s*tư/gi, 'biểu mẫu theo Thông tư '],
-        [/biểu\s*mẫu\s*theo\s*nghị\s*định/gi, 'biểu mẫu theo Nghị định '],
+    const replacements = [
         [/Cácbiểumẫutheothôngtư/gi, 'Các biểu mẫu theo Thông tư '],
         [/CácbiểumẫutheoNghịđịnh/gi, 'Các biểu mẫu theo Nghị định '],
         [/Cácbiểumẫu/gi, 'Các biểu mẫu '],
+        [/biểumẫutheothôngtư/gi, 'biểu mẫu theo Thông tư '],
+        [/biểumẫutheoNghịđịnh/gi, 'biểu mẫu theo Nghị định '],
         [/biểumẫu/gi, 'biểu mẫu '],
         [/theothôngtư/gi, 'theo Thông tư '],
         [/theoNghịđịnh/gi, 'theo Nghị định '],
@@ -369,7 +337,7 @@ function cleanCellLines(lines) {
         [/PRODIGYII/gi, 'PRODIGY II'],
         [/Máyđonồngđộcồn/gi, 'Máy đo nồng độ cồn '],
         [/đonồngđộcồn/gi, 'đo nồng độ cồn '],
-        [/nồngđ��cồn/gi, 'nồng độ cồn'],
+        [/nồngđộcồn/gi, 'nồng độ cồn'],
         [/súngbắnđạncaosu/gi, 'súng bắn đạn cao su '],
         [/súngbắnđạncao/gi, 'súng bắn đạn cao '],
         [/súngbắnđạn/gi, 'súng bắn đạn '],
@@ -443,9 +411,46 @@ function cleanCellLines(lines) {
         [/Thôngtư73\/2024\/TT-BCAngày15\/11\/2024/gi, 'Thông tư 73/2024/TT-BCA ngày 15/11/2024']
     ];
 
-    gluedReplacements.forEach(([pat, rep]) => {
-        raw = raw.replace(pat, rep);
+    replacements.forEach(([pat, rep]) => {
+        t = t.replace(pat, rep);
     });
+
+    t = t.replace(/[ \t]+/g, ' ');
+    return t.trim();
+}
+
+function cleanCellLines(lines) {
+    if (!lines || lines.length === 0) return [];
+    let raw = lines.join('\n');
+
+    // 1. Remove stray chainage numbers that attached to header lines
+    raw = raw.replace(/(\*?\s*Tuần tra,\s*kiểm soát\s*cơ động\s*):?\s*\+\d+/gi, '$1:');
+    raw = raw.replace(/(\*?\s*Tuần tra,\s*kiểm soát\s*công khai[^:]*):?\s*\+\d+/gi, '$1:');
+    raw = raw.replace(/(1\.\s*Tuần tra,\s*kiểm soát\s*cơ động\s*):?\s*\+\d+/gi, '$1:');
+    raw = raw.replace(/(2\.\s*Kiểm soát\s*tại[^:]*):?\s*\+\d+/gi, '$1:');
+    raw = raw.replace(/:\s*\+\d+/g, ':');
+
+    // 2. Standardize Route 1 (Trà Vinh cũ): QL53 (Km 43+108 -> 166+858), QL53B, QL54 (82+700 -> 148+200), QL60 (11+308 -> 101+226)
+    if (raw.includes('QL53') && (raw.includes('43') || raw.includes('166')) && raw.includes('Trà Vinh cũ')) {
+        raw = raw.replace(
+            /QL53.*?101.*?(?=Các tuyến đường|$)/s,
+            'QL53, từ Km 43+108 đến Km 166+858; QL53B; QL54, từ Km 82+700 đến Km 148+200; QL60, từ Km 11+308 đến Km 101+226; '
+        );
+    }
+
+    // 3. Standardize Route 2 (Trà Vinh, Nguyệt Hóa...): QL53 (Km 56+700 -> 65+450), QL54 (144+450 -> 148+200), QL60 (71 -> 72)
+    if (raw.includes('QL53') && (raw.includes('56') || raw.includes('65')) && (raw.includes('Trà Vinh') || raw.includes('Nguyệt Hóa'))) {
+        raw = raw.replace(
+            /QL53.*?Km\s*72;?/s,
+            'QL53, từ Km 56+700 đến Km 65+450; QL54, từ Km 144+450 đến Km 148+200; QL60, từ Km 71 đến Km 72;'
+        );
+    }
+
+    // 4. General chainage cleaners
+    raw = raw.replace(/Km\s+(\d+)\s+đến\s+Km\s*\+(\d+)\+(\d+)\s+(\d+)/g, 'Km $1+$2 đến Km $4+$3');
+    raw = raw.replace(/Km\s+(\d+)\s*\+(\d+)\s+đến\s+Km\s+(\d+)\s*\+(\d+)/g, 'Km $1+$2 đến Km $3+$4');
+    raw = raw.replace(/Km\s+(\d+)\s*\n*\s*\+(\d+)/g, 'Km $1+$2');
+    raw = raw.replace(/(\d+)\s*\n*\s*\+(\d+)/g, '$1+$2');
 
     const clean = [];
     raw.split('\n').forEach(l => {
@@ -464,6 +469,9 @@ function cleanCellLines(lines) {
         l = l.replace(/tỉnhVĩnh/g, 'tỉnh Vĩnh');
         l = l.replace(/Tổ 1 7/g, 'Tổ 17');
         l = l.replace(/họp với/g, 'hợp với');
+
+        // Apply word splitter
+        l = splitGluedVietnameseWords(l);
 
         clean.push(l);
     });
@@ -585,6 +593,13 @@ function escapeHtml(text) {
                .replace(/'/g, "&#039;");
 }
 
+function renderHtmlWithSuperscripts(text) {
+    if (!text) return '';
+    // Format chainages e.g. Km 56+700 -> Km 56<sup class="font-bold text-[10px]">+700</sup>
+    const escaped = escapeHtml(text);
+    return escaped.replace(/(Km\s+\d+|\d+)(\+\d+)/gi, '$1<sup class="font-bold text-[10px]">$2</sup>');
+}
+
 function renderScheduleTable() {
     let totalShifts = 0;
     scheduleTableBody.innerHTML = '';
@@ -662,14 +677,14 @@ function renderScheduleTable() {
 function renderGeneralLinesHtml(lines) {
     if (!lines || lines.length === 0) return '';
     return lines.map(l => {
-        let esc = escapeHtml(l);
+        let esc = renderHtmlWithSuperscripts(l);
         if (/^(\*Tuần tra|\* Tuần tra|\*Kiểm soát|\* Kiểm soát|\* PC02|\d+\.\s+Tuần tra|\d+\.\s+Kiểm soát)/.test(l)) {
             return `<div class="font-bold mt-1">${esc}</div>`;
         }
         if (/^(- Tuyến:|- Thời gian:|- Đối tượng[^:]*:|- Hành vi[^:]*:|- Tuyên truyền[^:]*:)/.test(l)) {
-            const parts = esc.split(':');
+            const parts = l.split(':');
             if (parts.length >= 2) {
-                return `<div><strong class="font-bold">${parts[0]}:</strong> ${parts.slice(1).join(':')}</div>`;
+                return `<div><strong class="font-bold">${escapeHtml(parts[0])}:</strong> ${renderHtmlWithSuperscripts(parts.slice(1).join(':'))}</div>`;
             }
         }
         return `<div>${esc}</div>`;
@@ -684,9 +699,9 @@ function renderCol6LinesHtml(lines) {
             return `<div class="font-bold text-slate-950">${esc}</div>`;
         }
         if (/^(- Phương tiện, thiết bị|- Thiết bị|- Phương tiện thông tin|- Vũ khí|- Súng|- Gậy|- Các biểu mẫu|- Cân|- Máy)/.test(l)) {
-            const parts = esc.split(':');
+            const parts = l.split(':');
             if (parts.length >= 2) {
-                return `<div><strong class="font-bold">${parts[0]}:</strong> ${parts.slice(1).join(':')}</div>`;
+                return `<div><strong class="font-bold">${escapeHtml(parts[0])}:</strong> ${escapeHtml(parts.slice(1).join(':'))}</div>`;
             }
         }
         return `<div>${esc}</div>`;
@@ -703,6 +718,7 @@ btnExportDocx.addEventListener('click', async () => {
     try {
         const zip = new JSZip();
 
+        // [Content_Types].xml
         const contentTypesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
@@ -712,11 +728,17 @@ btnExportDocx.addEventListener('click', async () => {
   <Override PartName="/word/fontTable.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml"/>
 </Types>`;
 
-        const relsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        // Root _rels/.rels (Only points to word/document.xml)
+        const rootRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
-  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="word/styles.xml"/>
-  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/fontTable" Target="word/fontTable.xml"/>
+</Relationships>`;
+
+        // Document _rels: word/_rels/document.xml.rels (Points to styles.xml and fontTable.xml)
+        const documentRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/fontTable" Target="fontTable.xml"/>
 </Relationships>`;
 
         const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -866,7 +888,7 @@ btnExportDocx.addEventListener('click', async () => {
 
                 tableRowsXml += makeXmlCol2(s.col2Lines, 2200, 22);
                 tableRowsXml += makeXmlGeneral(s.col3Lines, 1300, 20);
-                tableRowsXml += makeXmlGeneral(s.col4Lines, 3600, 20);
+                tableRowsXml += makeXmlWithSuperscript(s.col4Lines, 3600, 20);
                 tableRowsXml += makeXmlGeneral(s.col5Lines, 2900, 20);
                 tableRowsXml += makeXmlCol6(s.col6Lines, 3700, 20);
 
@@ -986,10 +1008,11 @@ btnExportDocx.addEventListener('click', async () => {
 </w:document>`;
 
         zip.file('[Content_Types].xml', contentTypesXml);
-        zip.folder('_rels').file('.rels', relsXml);
-        zip.folder('word').file('document.xml', documentXml);
-        zip.folder('word').file('styles.xml', stylesXml);
-        zip.folder('word').file('fontTable.xml', fontTableXml);
+        zip.file('_rels/.rels', rootRelsXml);
+        zip.file('word/_rels/document.xml.rels', documentRelsXml);
+        zip.file('word/document.xml', documentXml);
+        zip.file('word/styles.xml', stylesXml);
+        zip.file('word/fontTable.xml', fontTableXml);
 
         const blob = await zip.generateAsync({ type: 'blob' });
         const url = URL.createObjectURL(blob);
@@ -1085,10 +1108,87 @@ function makeXmlCol2(lines, widthDxa, fontSize = 22) {
     </w:tc>`;
 }
 
+function makeXmlWithSuperscript(lines, widthDxa, fontSize = 20) {
+    if (!lines || lines.length === 0) {
+        return `<w:tc><w:tcPr><w:tcW w:w="${widthDxa}" w:type="dxa"/><w:vAlign w:val="top"/><w:tcBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/></w:tcBorders></w:tcPr><w:p><w:pPr><w:spacing w:after="0"/></w:pPr></w:p></w:tc>`;
+    }
+
+    const parasXml = lines.map(l => {
+        let isHeaderBold = false;
+        if (/^(\*Tuần tra|\* Tuần tra|\*Kiểm soát|\* Kiểm soát|\* PC02|\d+\.\s+Tuần tra|\d+\.\s+Kiểm soát)/.test(l)) {
+            isHeaderBold = true;
+        }
+
+        if (anyStartsWith(l, ['- Tuyến:', '- Thời gian:'])) {
+            const parts = l.split(':');
+            if (parts.length >= 2) {
+                const p1 = parts[0] + ': ';
+                const p2 = parts.slice(1).join(':').trim();
+                return `
+                <w:p>
+                    <w:pPr><w:spacing w:after="30"/></w:pPr>
+                    <w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/><w:b/><w:sz w:val="${fontSize}"/></w:rPr><w:t>${escapeXml(p1)}</w:t></w:r>
+                    ${formatXmlChainageRuns(p2, false, fontSize)}
+                </w:p>`;
+            }
+        }
+
+        return `
+        <w:p>
+            <w:pPr><w:spacing w:after="30"/></w:pPr>
+            ${formatXmlChainageRuns(l, isHeaderBold, fontSize)}
+        </w:p>`;
+    }).join('');
+
+    return `
+    <w:tc>
+        <w:tcPr>
+            <w:tcW w:w="${widthDxa}" w:type="dxa"/>
+            <w:vAlign w:val="top"/>
+            <w:tcBorders>
+                <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+                <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+                <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+                <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+            </w:tcBorders>
+        </w:tcPr>
+        ${parasXml}
+    </w:tc>`;
+}
+
+function formatXmlChainageRuns(text, isBold, fontSize) {
+    const pattern = /(Km\s+\d+|\d+)(\+\d+)/gi;
+    let pos = 0;
+    let runsXml = '';
+    let match;
+
+    while ((match = pattern.exec(text)) !== null) {
+        const start = match.index;
+        const end = pattern.lastIndex;
+
+        if (start > pos) {
+            runsXml += `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>${isBold ? '<w:b/>' : ''}<w:sz w:val="${fontSize}"/></w:rPr><w:t xml:space="preserve">${escapeXml(text.substring(pos, start))}</w:t></w:r>`;
+        }
+
+        const kmPart = match[1];
+        const plusPart = match[2];
+
+        runsXml += `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>${isBold ? '<w:b/>' : ''}<w:sz w:val="${fontSize}"/></w:rPr><w:t xml:space="preserve">${escapeXml(kmPart)}</w:t></w:r>`;
+        runsXml += `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>${isBold ? '<w:b/>' : ''}<w:vertAlign w:val="superscript"/><w:sz w:val="${fontSize - 4}"/></w:rPr><w:t xml:space="preserve">${escapeXml(plusPart)}</w:t></w:r>`;
+
+        pos = end;
+    }
+
+    if (pos < text.length) {
+        runsXml += `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>${isBold ? '<w:b/>' : ''}<w:sz w:val="${fontSize}"/></w:rPr><w:t xml:space="preserve">${escapeXml(text.substring(pos))}</w:t></w:r>`;
+    }
+
+    return runsXml || `<w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>${isBold ? '<w:b/>' : ''}<w:sz w:val="${fontSize}"/></w:rPr><w:t xml:space="preserve">${escapeXml(text)}</w:t></w:r>`;
+}
+
 function makeXmlCol6(lines, widthDxa, fontSize = 20) {
     if (!lines || lines.length === 0) {
-        return `<w:tc><w:tcPr><w:tcW w:w="${widthDxa}" w:type="dxa"/><w:vAlign w:val="top"/><w:tcBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-<w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/></w:tcBorders></w:tcPr><w:p><w:pPr><w:spacing w:after="0"/></w:pPr></w:p></w:tc>`;
+        return `<w:tc><w:tcPr><w:tcW w:w="${widthDxa}" w:type="dxa"/><w:vAlign w:val="top"/><w:tcBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/></w:tcBorders></w:tcPr><w:p><w:pPr><w:spacing w:after="0"/></w:pPr></w:p></w:tc>`;
     }
     const parasXml = lines.map(l => {
         let isVehicleBold = false;

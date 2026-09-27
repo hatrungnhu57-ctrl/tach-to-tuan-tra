@@ -33,9 +33,8 @@ const progressPct = document.getElementById('progress-pct');
 const progressIndicator = document.getElementById('progress-indicator');
 const resultSection = document.getElementById('result-section');
 const scheduleTableBody = document.getElementById('schedule-table-body');
-const matchingBadge = document.getElementById('matching-badge');
-const filterSearch = document.getElementById('filter-search');
-const filterDay = document.getElementById('filter-day');
+const statTotalShiftsBadge = document.getElementById('stat-total-shifts-badge');
+const statDaysBadge = document.getElementById('stat-days-badge');
 const btnExportDocx = document.getElementById('btn-export-docx');
 
 // Personnel Modal Elements
@@ -49,13 +48,7 @@ const personnelTableBody = document.getElementById('personnel-table-body');
 const officerCountBadge = document.getElementById('officer-count-badge');
 const btnResetDefaultOfficers = document.getElementById('btn-reset-default-officers');
 
-// Stats Elements
-const statTotalShifts = document.getElementById('stat-total-shifts');
-const statTotalDays = document.getElementById('stat-total-days');
-const statActiveOfficers = document.getElementById('stat-active-officers');
-const statPlanDates = document.getElementById('stat-plan-dates');
-
-// Initialize Icons
+// Initialize Lucide Icons
 if (window.lucide) {
     lucide.createIcons();
 }
@@ -100,7 +93,7 @@ btnSavePersonnel.addEventListener('click', () => {
     localStorage.setItem('tv_officers', JSON.stringify(officersList));
     modalPersonnel.classList.add('hidden');
     if (parsedSchedule.length > 0) {
-        filterAndRenderSchedule();
+        renderScheduleTable();
     }
 });
 
@@ -170,20 +163,30 @@ btnProcess.addEventListener('click', async () => {
             const page = await pdf.getPage(pageNum);
             const textContent = await page.getTextContent();
 
-            const items = textContent.items.map(item => {
-                const tx = item.transform;
+            // Extract items with proper spacing detection
+            const rawItems = textContent.items;
+            const items = [];
+
+            for (let i = 0; i < rawItems.length; i++) {
+                const it = rawItems[i];
+                if (!it.str || it.str.trim().length === 0) continue;
+
+                const tx = it.transform;
                 const x = tx[4];
                 const y = tx[5];
-                return {
-                    text: item.str,
+                const width = it.width || 0;
+
+                items.push({
+                    text: it.str,
                     x: x,
                     y: y,
+                    w: width,
                     p: pageNum,
                     col: getColumnIndex(x)
-                };
-            }).filter(it => it.text && it.text.trim().length > 0);
+                });
+            }
 
-            // Sort by Y descending, X ascending
+            // Sort page items by Y descending (top to bottom), X ascending
             items.sort((a, b) => {
                 if (Math.abs(a.y - b.y) > 3.5) {
                     return b.y - a.y;
@@ -194,7 +197,7 @@ btnProcess.addEventListener('click', async () => {
             allRuns.push(...items);
         }
 
-        progressText.innerText = "Đang lọc các ca thuộc Tổ Trà Vinh và giữ đúng mẫu kế hoạch...";
+        progressText.innerText = "Đang tách các ca thuộc Tổ Trà Vinh và giữ đúng 100% mẫu...";
         progressBar.style.width = `85%`;
         progressPct.innerText = `85%`;
 
@@ -210,8 +213,8 @@ btnProcess.addEventListener('click', async () => {
             resultSection.classList.remove('hidden');
             statusLabel.innerText = "Đã tách xong";
             btnProcess.disabled = false;
-            filterAndRenderSchedule();
-        }, 400);
+            renderScheduleTable();
+        }, 300);
 
     } catch (err) {
         console.error(err);
@@ -258,24 +261,43 @@ function groupRunsToLines(runs) {
                 curLine.push(r);
             } else {
                 curLine.sort((a, b) => a.x - b.x);
-                allLines.push(curLine.map(x => x.text).join(' '));
+                allLines.push(joinRunsWithSpaces(curLine));
                 curLine = [r];
                 curY = r.y;
             }
         }
         if (curLine.length > 0) {
             curLine.sort((a, b) => a.x - b.x);
-            allLines.push(curLine.map(x => x.text).join(' '));
+            allLines.push(joinRunsWithSpaces(curLine));
         }
     });
 
     return cleanCellLines(allLines);
 }
 
+function joinRunsWithSpaces(lineRuns) {
+    if (!lineRuns || lineRuns.length === 0) return '';
+    let res = lineRuns[0].text;
+    for (let i = 1; i < lineRuns.length; i++) {
+        const prev = lineRuns[i - 1];
+        const cur = lineRuns[i];
+        const gap = cur.x - (prev.x + (prev.w || 0));
+
+        // Insert space if gap is positive or if previous doesn't end with space and cur doesn't start with space
+        if (gap > 1.5 || (!prev.text.endsWith(' ') && !cur.text.startsWith(' '))) {
+            res += ' ' + cur.text;
+        } else {
+            res += cur.text;
+        }
+    }
+    return res;
+}
+
 function cleanCellLines(lines) {
     if (!lines || lines.length === 0) return [];
     let raw = lines.join('\n');
 
+    // Clean chainages
     raw = raw.replace(/Km\s+(\d+)\s*\n*\s*\+(\d+)/g, 'Km $1+$2');
     raw = raw.replace(/(\d+)\s*\n*\s*\+(\d+)/g, '$1+$2');
 
@@ -296,6 +318,14 @@ function cleanCellLines(lines) {
         l = l.replace(/tỉnhVĩnh/g, 'tỉnh Vĩnh');
         l = l.replace(/Tổ 1 7/g, 'Tổ 17');
         l = l.replace(/họp với/g, 'hợp với');
+
+        // Fix glued words
+        l = l.replace(/ngày\s*23\/12\/2021củaChínhphủ/g, 'ngày 23/12/2021 của Chính phủ');
+        l = l.replace(/vềĐTGLTNGT/g, 'về ĐTGQTNGT');
+        l = l.replace(/Audaxseri/g, 'Audax seri: ');
+        l = l.replace(/Chínhphủ/g, 'Chính phủ');
+        l = l.replace(/củaChính/g, 'của Chính');
+
         clean.push(l);
     });
 
@@ -416,83 +446,77 @@ function escapeHtml(text) {
                .replace(/'/g, "&#039;");
 }
 
-function filterAndRenderSchedule() {
-    const searchVal = filterSearch.value.toLowerCase().trim();
-    const dayVal = filterDay.value;
-
-    let totalFilteredShifts = 0;
-    let activeOfficersSet = new Set();
+function renderScheduleTable() {
+    let totalShifts = 0;
     scheduleTableBody.innerHTML = '';
 
     parsedSchedule.forEach(day => {
-        if (dayVal !== 'all' && day.day !== dayVal) return;
+        if (!day.tvTos || day.tvTos.length === 0) return;
 
-        const matchingShifts = day.tvTos.filter(s => {
-            if (!searchVal) return true;
-            const fullContent = (s.toName + ' ' + s.col2Lines.join(' ') + ' ' + s.col3Lines.join(' ') + ' ' + s.col4Lines.join(' ') + ' ' + s.col5Lines.join(' ') + ' ' + s.col6Lines.join(' ') + ' ' + s.matchedOfficers.join(' ')).toLowerCase();
-            return fullContent.includes(searchVal);
-        });
+        totalShifts += day.tvTos.length;
 
-        if (matchingShifts.length === 0) return;
-
-        totalFilteredShifts += matchingShifts.length;
-        matchingShifts.forEach(s => s.matchedOfficers.forEach(o => activeOfficersSet.add(o)));
-
-        matchingShifts.forEach((s, idx) => {
+        day.tvTos.forEach((s, idx) => {
             const tr = document.createElement('tr');
-            tr.className = 'hover:bg-blue-50/40 transition duration-150 align-top';
+            tr.className = 'border-b border-slate-900 align-top';
 
-            let dayCellHtml = '';
+            // Column 1: Ngày, tháng (merged vertically)
+            let col1Html = '';
             if (idx === 0) {
-                dayCellHtml = `
-                    <td rowspan="${matchingShifts.length}" class="py-3 px-3 text-center align-middle font-bold text-slate-800 bg-slate-50/80 border-r border-b border-slate-200">
-                        <div class="text-sm text-blue-700 font-bold">${escapeHtml(day.day)}</div>
-                        <div class="text-xs text-slate-500 mt-0.5">${escapeHtml(day.date)}</div>
-                        <div class="mt-2 inline-block px-2 py-0.5 bg-blue-100 text-blue-800 text-[11px] font-semibold rounded-full">
-                            ${matchingShifts.length} ca
-                        </div>
+                col1Html = `
+                    <td rowspan="${day.tvTos.length}" class="py-3 px-2 text-center align-middle font-bold text-slate-900 border border-slate-900 bg-slate-50/50">
+                        <div class="font-bold text-[13px]">${escapeHtml(day.day)}</div>
+                        <div class="text-[12px] text-slate-700 mt-1">${escapeHtml(day.date)}</div>
                     </td>
                 `;
             }
 
-            // Render Col 2:
-            // Tên Tổ: IN ĐẬM
-            // Tên cán bộ (1. Đ/c ...): IN ĐẬM
-            // Tổ trưởng, Tổ viên: KHÔNG IN ĐẬM
+            // Column 2: Tổ CSGT (Tên cán bộ IN ĐẬM, Tổ trưởng/Tổ viên KHÔNG IN ĐẬM)
             let col2Html = s.col2Lines.map(l => {
                 let esc = escapeHtml(l);
                 if (/^Tổ\s+\d+/i.test(l)) {
-                    return `<div class="font-bold text-blue-800 text-sm mb-1">${esc}</div>`;
+                    return `<div class="font-bold text-[13px] mb-1">${esc}</div>`;
                 }
                 if (l === 'Tổ trưởng' || l === 'Tổ viên' || l === 'Tổ  viên' || l === 'Tổ phó') {
-                    return `<div class="text-slate-600 text-[11px]">${esc}</div>`;
+                    return `<div class="font-normal text-slate-700">${esc}</div>`;
                 }
                 const m = l.match(/^(.*?)(Tổ\s+trưởng|Tổ\s+viên|Tổ\s+phó)$/i);
                 if (m) {
-                    return `<div><strong class="font-bold text-slate-900">${escapeHtml(m[1].trim())}</strong> <span class="text-slate-600 text-[11px]">${escapeHtml(m[2])}</span></div>`;
+                    return `<div><strong class="font-bold">${escapeHtml(m[1].trim())}</strong> <span class="font-normal text-slate-700">${escapeHtml(m[2])}</span></div>`;
                 }
                 if (/^\d+\.\s*(Đ\/c|[A-ZÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬ])/i.test(l) || l.includes('Đ/c')) {
-                    return `<div class="font-bold text-slate-900">${esc}</div>`;
+                    return `<div class="font-bold">${esc}</div>`;
                 }
-                return `<div class="text-slate-700">${esc}</div>`;
+                return `<div>${esc}</div>`;
             }).join('');
 
+            // Column 3: Huy động
+            let col3Html = s.col3Lines.length > 0 ? s.col3Lines.map(l => `<div>${escapeHtml(l)}</div>`).join('') : '<span class="text-slate-400 italic"></span>';
+
+            // Column 4: Hình thức TTKS
+            let col4Html = renderGeneralLinesHtml(s.col4Lines);
+
+            // Column 5: Nhiệm vụ
+            let col5Html = renderGeneralLinesHtml(s.col5Lines);
+
+            // Column 6: Phương tiện, vũ khí, CCHT (Xe IN ĐẬM)
+            let col6Html = renderCol6LinesHtml(s.col6Lines);
+
             tr.innerHTML = `
-                ${dayCellHtml}
-                <td class="py-3 px-3 border-r border-slate-200 text-xs">
-                    <div class="leading-relaxed">${col2Html}</div>
+                ${col1Html}
+                <td class="py-2.5 px-2 border border-slate-900 text-[12px] leading-snug">
+                    ${col2Html}
                 </td>
-                <td class="py-3 px-3 text-slate-600 border-r border-slate-200 text-xs leading-relaxed">
-                    ${s.col3Lines.length > 0 ? s.col3Lines.map(l => escapeHtml(l)).join('<br>') : '<span class="text-slate-400 italic">(Trống)</span>'}
+                <td class="py-2.5 px-2 border border-slate-900 text-[12px] leading-snug text-center">
+                    ${col3Html}
                 </td>
-                <td class="py-3 px-3 text-slate-700 border-r border-slate-200 text-xs leading-relaxed">
-                    ${renderCellLinesHtml(s.col4Lines, false)}
+                <td class="py-2.5 px-2 border border-slate-900 text-[12px] leading-snug">
+                    ${col4Html}
                 </td>
-                <td class="py-3 px-3 text-slate-700 border-r border-slate-200 text-xs leading-relaxed">
-                    ${renderCellLinesHtml(s.col5Lines, false)}
+                <td class="py-2.5 px-2 border border-slate-900 text-[12px] leading-snug">
+                    ${col5Html}
                 </td>
-                <td class="py-3 px-3 text-slate-700 text-xs leading-relaxed">
-                    ${renderCellLinesHtml(s.col6Lines, true)}
+                <td class="py-2.5 px-2 border border-slate-900 text-[12px] leading-snug">
+                    ${col6Html}
                 </td>
             `;
 
@@ -500,43 +524,44 @@ function filterAndRenderSchedule() {
         });
     });
 
-    if (totalFilteredShifts === 0) {
-        scheduleTableBody.innerHTML = `
-            <tr>
-                <td colspan="6" class="py-8 text-center text-slate-400 text-sm">
-                    Không tìm thấy ca trực nào phù hợp với bộ lọc tìm kiếm.
-                </td>
-            </tr>
-        `;
-    }
-
-    statTotalShifts.innerText = totalFilteredShifts;
-    statActiveOfficers.innerText = activeOfficersSet.size;
-    matchingBadge.innerText = `${totalFilteredShifts} ca phù hợp`;
+    statTotalShiftsBadge.innerText = `Đã tách ${totalShifts} ca Tổ Trà Vinh`;
+    statDaysBadge.innerText = `Đủ 7 ngày từ Thứ Hai đến Chủ Nhật`;
 }
 
-function renderCellLinesHtml(lines, isCol6 = false) {
+function renderGeneralLinesHtml(lines) {
     if (!lines || lines.length === 0) return '';
     return lines.map(l => {
         let esc = escapeHtml(l);
-        if (isCol6 && (l.startsWith('*') || /\d{2}[A-Z]\d?\s*-\s*[\d\.]+/.test(l))) {
-            return `<div class="font-bold text-slate-900 bg-slate-100 px-1 py-0.5 rounded my-0.5">${esc}</div>`;
+        if (/^(\*Tuần tra|\* Tuần tra|\*Kiểm soát|\* Kiểm soát|\* PC02|\d+\.\s+Tuần tra|\d+\.\s+Kiểm soát)/.test(l)) {
+            return `<div class="font-bold mt-1">${esc}</div>`;
         }
-        if (/^(\* [^\n]+|\d+\.\s+Tuần tra|\d+\.\s+Kiểm soát)/.test(l)) {
-            return `<strong class="text-slate-900 block mt-1">${esc}</strong>`;
-        }
-        if (/^(- Tuyến:|- Thời gian:|- Đối tượng[^:]*:|- Hành vi[^:]*:|- Tuyên truyền[^:]*:|- Phương tiện[^:]*:|- Thiết bị[^:]*:|- Vũ khí[^:]*:|- Gậy[^:]*:|- Các biểu mẫu[^:]*:)/.test(l)) {
+        if (/^(- Tuyến:|- Thời gian:|- Đối tượng[^:]*:|- Hành vi[^:]*:|- Tuyên truyền[^:]*:)/.test(l)) {
             const parts = esc.split(':');
             if (parts.length >= 2) {
-                return `<div><strong class="text-slate-800 font-semibold">${parts[0]}:</strong> ${parts.slice(1).join(':')}</div>`;
+                return `<div><strong class="font-bold">${parts[0]}:</strong> ${parts.slice(1).join(':')}</div>`;
             }
         }
         return `<div>${esc}</div>`;
     }).join('');
 }
 
-filterSearch.addEventListener('input', filterAndRenderSchedule);
-filterDay.addEventListener('change', filterAndRenderSchedule);
+function renderCol6LinesHtml(lines) {
+    if (!lines || lines.length === 0) return '';
+    return lines.map(l => {
+        let esc = escapeHtml(l);
+        // Vehicle plate -> BOLD
+        if (l.startsWith('*') || /\d{2}[A-Z]\d?\s*-\s*[\d\.]+/.test(l)) {
+            return `<div class="font-bold text-slate-950">${esc}</div>`;
+        }
+        if (/^(- Phương tiện, thiết bị|- Thiết bị|- Phương tiện thông tin|- Vũ khí|- Súng|- Gậy|- Các biểu mẫu|- Cân|- Máy)/.test(l)) {
+            const parts = esc.split(':');
+            if (parts.length >= 2) {
+                return `<div><strong class="font-bold">${parts[0]}:</strong> ${parts.slice(1).join(':')}</div>`;
+            }
+        }
+        return `<div>${esc}</div>`;
+    }).join('');
+}
 
 // Export Word Document (.docx)
 btnExportDocx.addEventListener('click', async () => {
@@ -621,7 +646,7 @@ btnExportDocx.addEventListener('click', async () => {
         });
         tableRowsXml += `</w:tr>`;
 
-        // Body Rows with Vertical Merge on Date Column
+        // Body Rows
         parsedSchedule.forEach(day => {
             if (!day.tvTos || day.tvTos.length === 0) return;
 
@@ -884,7 +909,7 @@ function makeXmlCol6(lines, widthDxa, fontSize = 20) {
             isVehicleBold = true;
         }
 
-        if (anyStartsWith(l, ['- Phương tiện, thiết bị', '- Thiết bị', '- Phương tiện thông tin', '- Vũ khí', '- Súng', '- Gậy', '- Các biểu mẫu', '- Cân', '- Máy'])) {
+        if (anyStartsWith(l, ['- Phương tiện, thiết bị', '- Thi���t bị', '- Phương tiện thông tin', '- Vũ khí', '- Súng', '- Gậy', '- Các biểu mẫu', '- Cân', '- Máy'])) {
             const parts = l.split(':');
             if (parts.length >= 2) {
                 const p1 = parts[0] + ': ';

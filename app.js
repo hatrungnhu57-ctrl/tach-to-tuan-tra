@@ -903,6 +903,10 @@ btnExportDocx.addEventListener('click', async () => {
                 <w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/><w:insideH w:val="none"/><w:insideV w:val="none"/>
             </w:tblBorders>
         </w:tblPr>
+        <w:tblGrid>
+            <w:gridCol w:w="7000"/>
+            <w:gridCol w:w="8000"/>
+        </w:tblGrid>
         <w:tr>
             <w:tc>
                 <w:tcPr><w:tcW w:w="7000" w:type="dxa"/></w:tcPr>
@@ -944,12 +948,12 @@ btnExportDocx.addEventListener('click', async () => {
             </w:tblBorders>
         </w:tblPr>
         <w:tblGrid>
-            <w:gridCol w:w="{col_widths[0]}"/>
-            <w:gridCol w:w="{col_widths[1]}"/>
-            <w:gridCol w:w="{col_widths[2]}"/>
-            <w:gridCol w:w="{col_widths[3]}"/>
-            <w:gridCol w:w="{col_widths[4]}"/>
-            <w:gridCol w:w="{col_widths[5]}"/>
+            <w:gridCol w:w="1300"/>
+            <w:gridCol w:w="2200"/>
+            <w:gridCol w:w="1300"/>
+            <w:gridCol w:w="3600"/>
+            <w:gridCol w:w="2900"/>
+            <w:gridCol w:w="3700"/>
         </w:tblGrid>
         ${tableRowsXml}
     </w:tbl>
@@ -969,6 +973,11 @@ btnExportDocx.addEventListener('click', async () => {
                 <w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/><w:insideH w:val="none"/><w:insideV w:val="none"/>
             </w:tblBorders>
         </w:tblPr>
+        <w:tblGrid>
+            <w:gridCol w:w="5000"/>
+            <w:gridCol w:w="5000"/>
+            <w:gridCol w:w="5000"/>
+        </w:tblGrid>
         <w:tr>
             <w:tc>
                 <w:tcPr><w:tcW w:w="5000" w:type="dxa"/></w:tcPr>
@@ -1023,13 +1032,15 @@ btnExportDocx.addEventListener('click', async () => {
 
 function escapeXml(unsafe) {
     if (!unsafe) return '';
-    return unsafe.replace(/[<>&'"]/g, (c) => {
+    let s = String(unsafe).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+    return s.replace(/[<>&'"]/g, (c) => {
         switch (c) {
             case '<': return '&lt;';
             case '>': return '&gt;';
             case '&': return '&amp;';
             case '\'': return '&apos;';
             case '"': return '&quot;';
+            default: return c;
         }
     });
 }

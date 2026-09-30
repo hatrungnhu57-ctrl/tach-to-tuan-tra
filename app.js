@@ -54,11 +54,11 @@ if (window.lucide) {
     lucide.createIcons();
 }
 
-// Print Handler (Hides browser header/footer during printing)
+// Print Handler (Cleans browser header/footer)
 if (btnPrintPdf) {
     btnPrintPdf.addEventListener('click', () => {
         const origTitle = document.title;
-        document.title = ""; // Clears the page title from browser print header
+        document.title = "";
         window.print();
         setTimeout(() => {
             document.title = origTitle;
@@ -320,7 +320,7 @@ function splitGluedVietnameseWords(text) {
         [/vềĐTGQTNGT/gi, 'về ĐTGQTNGT'],
         [/củaChínhphủ/gi, 'của Chính phủ'],
         [/Chínhphủ/gi, 'Chính phủ'],
-        [/củaChính/gi, 'của Chính'],
+        [/c��aChính/gi, 'của Chính'],
         [/sửađổi,bổsung/gi, 'sửa đổi, bổ sung'],
         [/sửađổi,bổ/gi, 'sửa đổi, bổ '],
         [/bổsung/gi, 'bổ sung'],
@@ -676,34 +676,36 @@ function renderScheduleTable() {
 function renderGeneralLinesHtml(lines) {
     if (!lines || lines.length === 0) return '';
     return lines.map(l => {
-        let esc = renderHtmlWithSuperscripts(l);
-        if (/^(\*Tuần tra|\* Tuần tra|\*Kiểm soát|\* Kiểm soát|\* PC02|\d+\.\s+Tuần tra|\d+\.\s+Kiểm soát)/.test(l)) {
-            return `<div class="font-bold mt-1">${esc}</div>`;
+        if (/^(\*Tuần tra|\* Tuần tra|\*Kiểm soát|\* Kiểm soát|\* PC02|\d+\.\s+Tuần tra|\d+\.\s+Kiểm soát)/i.test(l)) {
+            return `<div class="font-bold mt-1">${renderHtmlWithSuperscripts(l)}</div>`;
         }
-        if (/^(- Tuyến:|- Thời gian:|- Đối tượng[^:]*:|- Hành vi[^:]*:|- Tuyên truyền[^:]*:)/.test(l)) {
-            const parts = esc.split(':');
+        if (/^(- Tuyến:|- Thời gian:|- Đối tượng[^:]*:|- Hành vi[^:]*:|- Tuyên truyền[^:]*:)/i.test(l)) {
+            const parts = l.split(':');
             if (parts.length >= 2) {
-                return `<div><strong class="font-bold">${escapeHtml(parts[0])}:</strong> ${renderHtmlWithSuperscripts(parts.slice(1).join(':'))}</div>`;
+                const header = escapeHtml(parts[0]) + ': ';
+                const content = renderHtmlWithSuperscripts(parts.slice(1).join(':').trim());
+                return `<div><strong class="font-bold">${header}</strong>${content}</div>`;
             }
         }
-        return `<div>${esc}</div>`;
+        return `<div>${renderHtmlWithSuperscripts(l)}</div>`;
     }).join('');
 }
 
 function renderCol6LinesHtml(lines) {
     if (!lines || lines.length === 0) return '';
     return lines.map(l => {
-        let esc = escapeHtml(l);
         if (l.startsWith('*') || /\d{2}[A-Z]\d?\s*-\s*[\d\.]+/.test(l)) {
-            return `<div class="font-bold text-slate-950">${esc}</div>`;
+            return `<div class="font-bold text-slate-950">${escapeHtml(l)}</div>`;
         }
-        if (/^(- Phương tiện, thiết bị|- Thiết bị|- Phương tiện thông tin|- Vũ khí|- Súng|- Gậy|- Các biểu mẫu|- Cân|- Máy)/.test(l)) {
-            const parts = esc.split(':');
+        if (/^(- Phương tiện, thiết bị|- Thiết bị|- Phương tiện thông tin|- Vũ khí|- Súng|- Gậy|- Các biểu mẫu|- Cân|- Máy)/i.test(l)) {
+            const parts = l.split(':');
             if (parts.length >= 2) {
-                return `<div><strong class="font-bold">${escapeHtml(parts[0])}:</strong> ${escapeHtml(parts.slice(1).join(':'))}</div>`;
+                const header = escapeHtml(parts[0]) + ': ';
+                const content = escapeHtml(parts.slice(1).join(':').trim());
+                return `<div><strong class="font-bold">${header}</strong>${content}</div>`;
             }
         }
-        return `<div>${esc}</div>`;
+        return `<div>${escapeHtml(l)}</div>`;
     }).join('');
 }
 
@@ -766,13 +768,13 @@ btnExportDocx.addEventListener('click', async () => {
   <Override PartName="/word/fontTable.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml"/>
 </Types>`;
 
-        // 2. Root _rels/.rels (Only points to word/document.xml)
+        // 2. Root _rels/.rels (Target="word/document.xml")
         const rootRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
 </Relationships>`;
 
-        // 3. Document _rels: word/_rels/document.xml.rels (Points to styles.xml and fontTable.xml)
+        // 3. Document _rels: word/_rels/document.xml.rels
         const documentRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
@@ -883,7 +885,7 @@ btnExportDocx.addEventListener('click', async () => {
             });
         });
 
-        // 6. word/document.xml
+        // 6. word/document.xml (Completely free of raw \n in <w:t>)
         const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <w:body>
@@ -905,7 +907,8 @@ btnExportDocx.addEventListener('click', async () => {
             <w:tc>
                 <w:tcPr><w:tcW w:w="7000" w:type="dxa"/></w:tcPr>
                 <w:p>${makePPr("center", 40, 0, 240)}<w:r>${makeRPr("Times New Roman", false, false, 24)}<w:t>PHÒNG CẢNH SÁT GIAO THÔNG</w:t></w:r></w:p>
-                <w:p>${makePPr("center", 40, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>ĐỘI CẢNH SÁT GIAO THÔNG\nĐƯỜNG BỘ</w:t></w:r></w:p>
+                <w:p>${makePPr("center", 20, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>ĐỘI CẢNH SÁT GIAO THÔNG</w:t></w:r></w:p>
+                <w:p>${makePPr("center", 40, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>ĐƯỜNG BỘ</w:t></w:r></w:p>
             </w:tc>
             <w:tc>
                 <w:tcPr><w:tcW w:w="8000" w:type="dxa"/></w:tcPr>
@@ -941,12 +944,12 @@ btnExportDocx.addEventListener('click', async () => {
             </w:tblBorders>
         </w:tblPr>
         <w:tblGrid>
-            <w:gridCol w:w="1300"/>
-            <w:gridCol w:w="2200"/>
-            <w:gridCol w:w="1300"/>
-            <w:gridCol w:w="3600"/>
-            <w:gridCol w:w="2900"/>
-            <w:gridCol w:w="3700"/>
+            <w:gridCol w:w="{col_widths[0]}"/>
+            <w:gridCol w:w="{col_widths[1]}"/>
+            <w:gridCol w:w="{col_widths[2]}"/>
+            <w:gridCol w:w="{col_widths[3]}"/>
+            <w:gridCol w:w="{col_widths[4]}"/>
+            <w:gridCol w:w="{col_widths[5]}"/>
         </w:tblGrid>
         ${tableRowsXml}
     </w:tbl>
@@ -1017,6 +1020,19 @@ btnExportDocx.addEventListener('click', async () => {
         alert("Lỗi khi tạo file Word: " + err.message);
     }
 });
+
+function escapeXml(unsafe) {
+    if (!unsafe) return '';
+    return unsafe.replace(/[<>&'"]/g, (c) => {
+        switch (c) {
+            case '<': return '&lt;';
+            case '>': return '&gt;';
+            case '&': return '&amp;';
+            case '\'': return '&apos;';
+            case '"': return '&quot;';
+        }
+    });
+}
 
 function makeDocxXmlCol2(lines, widthDxa, fontSize = 22) {
     if (!lines || lines.length === 0) {

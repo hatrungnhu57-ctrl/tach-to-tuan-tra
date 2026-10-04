@@ -810,9 +810,10 @@ function parseWeeklyScheduleFromRuns(allRuns, docMetadata) {
             const t = r.text.trim();
             if (t.includes("Tổ Cảnh sát") || t.includes("Tổ CSGT")) continue;
 
-            const m = t.match(/^Tổ\s*(\d+)/i);
+            const m = t.match(/^Tổ\s*(\d+)(?:\s+(\d+))?/i);
             if (m) {
-                toStarts.push({ idx: j, name: `Tổ ${m[1]}` });
+                const toNum = m[2] ? (m[1] + m[2]) : m[1];
+                toStarts.push({ idx: j, name: `Tổ ${toNum}` });
             } else if (t.toLowerCase() === 'tổ' && j + 1 < dayRuns.length && /^\d+$/.test(dayRuns[j+1].text.trim())) {
                 toStarts.push({ idx: j, name: `Tổ ${dayRuns[j+1].text.trim()}` });
             }

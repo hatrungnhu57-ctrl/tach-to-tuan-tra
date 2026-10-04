@@ -542,19 +542,20 @@ function cleanCellLines(lines) {
     raw = raw.replace(/(2\.\s*Kiểm soát\s*tại[^:]*):?\s*\+\d+/gi, '$1:');
     raw = raw.replace(/:\s*\+\d+/g, ':');
 
-    // Fix and unify wrapped headings
-    raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*cơ\s*động\s*kết\s*\n*\s*hợp\s*với\s*kiểm\s*soát\s*tại\s*một\s*điểm\s*\n*\s*trên\s*đường\s*giao\s*thông:?/gi, '* Tuần tra, kiểm soát cơ động kết hợp với kiểm soát tại một điểm trên đường giao thông:');
-    raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*công\s*khai\s*\n*\s*kết\s*hợp\s*với\s*hoá\s*trang:?/gi, '* Tuần tra, kiểm soát công khai kết hợp với hoá trang:');
-    raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*công\s*khai\s*\n*\s*kết\s*hợp\s*với\s*hóa\s*trang:?/gi, '* Tuần tra, kiểm soát công khai kết hợp với hoá trang:');
-    raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*công\s*khai\s*kết\s*hợp\s*với\s*hoá\s*trang:?/gi, '* Tuần tra, kiểm soát công khai kết hợp với hoá trang:');
-    raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*công\s*khai\s*kết\s*hợp\s*với\s*hóa\s*trang:?/gi, '* Tuần tra, kiểm soát công khai kết hợp với hoá trang:');
-    raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*cơ\s*động:?/gi, '* Tuần tra, kiểm soát cơ động:');
-    raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*công\s*khai:?/gi, '* Tuần tra, kiểm soát công khai:');
-    raw = raw.replace(/\*?\s*Kiểm\s*soát\s*tại\s*một\s*điểm\s*trên\s*đường\s*giao\s*thông:?/gi, '* Kiểm soát tại một điểm trên đường giao thông:');
+    // Fix and unify all combined headings FIRST (including all variants with colons, newlines, duplicate bullets)
+    raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*cơ\s*động:?\s*(?:\r?\n|\s)*(?:kết\s*hợp\s*với|hợp\s*với):?\s*(?:\r?\n|\s)*\*?\s*Kiểm\s*soát\s*tại\s*một\s*điểm\s*(?:\r?\n|\s)*trên\s*đường\s*giao\s*thông:?/gi, '* Tuần tra, kiểm soát cơ động kết hợp với kiểm soát tại một điểm trên đường giao thông:');
+    raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*cơ\s*động:?\s*(?:\r?\n|\s)*(?:kết\s*hợp\s*với|hợp\s*với):?\s*(?:\r?\n|\s)*\*?\s*kiểm\s*soát\s*tại\s*một\s*điểm\s*(?:\r?\n|\s)*trên\s*đường\s*giao\s*thông:?/gi, '* Tuần tra, kiểm soát cơ động kết hợp với kiểm soát tại một điểm trên đường giao thông:');
+
+    raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*công\s*khai:?\s*(?:\r?\n|\s)*(?:kết\s*hợp\s*với|hợp\s*với):?\s*(?:\r?\n|\s)*\*?\s*(?:hoá|hóa)\s*trang:?/gi, '* Tuần tra, kiểm soát công khai kết hợp với hoá trang:');
 
     // Separate multiple headers or sub-items onto new lines
     raw = raw.replace(/([^\n])\s*(\*\s*Tuần tra|\b1\.\s*Tuần tra|\b2\.\s*Kiểm soát|\*\s*Kiểm soát)/gi, '$1\n$2');
     raw = raw.replace(/([^\n])\s*(-\s*Tuyến:|-\s*Thời gian:|-\s*Đối tượng:|-\s*Nhiệm vụ:)/gi, '$1\n$2');
+
+    // Re-verify combined heading after line separation
+    raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*cơ\s*động:?\s*(?:\r?\n|\s)*(?:kết\s*hợp\s*với|hợp\s*với):?\s*(?:\r?\n|\s)*\*?\s*Kiểm\s*soát\s*tại\s*một\s*điểm\s*(?:\r?\n|\s)*trên\s*đường\s*giao\s*thông:?/gi, '* Tuần tra, kiểm soát cơ động kết hợp với kiểm soát tại một điểm trên đường giao thông:');
+    raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*cơ\s*động:?\s*(?:\r?\n|\s)*(?:kết\s*hợp\s*với|hợp\s*với):?\s*(?:\r?\n|\s)*\*?\s*kiểm\s*soát\s*tại\s*một\s*điểm\s*(?:\r?\n|\s)*trên\s*đường\s*giao\s*thông:?/gi, '* Tuần tra, kiểm soát cơ động kết hợp với kiểm soát tại một điểm trên đường giao thông:');
+    raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*công\s*khai:?\s*(?:\r?\n|\s)*(?:kết\s*hợp\s*với|hợp\s*với):?\s*(?:\r?\n|\s)*\*?\s*(?:hoá|hóa)\s*trang:?/gi, '* Tuần tra, kiểm soát công khai kết hợp với hoá trang:');
 
     // 2. Standardize Route 1 (Trà Vinh cũ): QL53 (Km 43+108 -> 166+858), QL53B, QL54 (82+700 -> 148+200), QL60 (11+308 -> 101+226)
     if (raw.includes('QL53') && (raw.includes('43') || raw.includes('166')) && raw.includes('Trà Vinh cũ')) {
@@ -579,12 +580,25 @@ function cleanCellLines(lines) {
     raw = raw.replace(/(\d+)\s*\n*\s*\+(\d+)/g, '$1+$2');
 
     const clean = [];
-    raw.split('\n').forEach(l => {
-        l = l.trim();
-        if (!l) return;
+    const linesArr = raw.split('\n');
+    for (let i = 0; i < linesArr.length; i++) {
+        let l = linesArr[i].trim();
+        if (!l) continue;
+
+        // Merge split combined heading lines if any were separated across lines
+        if (clean.length > 0 && /Tuần\s*tra,\s*kiểm\s*soát\s*cơ\s*động.*kết\s*hợp\s*với:?$/i.test(clean[clean.length - 1]) && /^\*?\s*Kiểm\s*soát\s*tại\s*một\s*điểm\s*trên\s*đường\s*giao\s*thông/i.test(l)) {
+            clean[clean.length - 1] = '* Tuần tra, kiểm soát cơ động kết hợp với kiểm soát tại một điểm trên đường giao thông:';
+            continue;
+        }
+
+        if (clean.length > 0 && /Tuần\s*tra,\s*kiểm\s*soát\s*công\s*khai.*kết\s*hợp\s*với:?$/i.test(clean[clean.length - 1]) && /^\*?\s*(?:hoá|hóa)\s*trang:?/i.test(l)) {
+            clean[clean.length - 1] = '* Tuần tra, kiểm soát công khai kết hợp với hoá trang:';
+            continue;
+        }
+
         if (/^\+\d+$/.test(l)) {
             if (clean.length > 0) clean[clean.length - 1] += l;
-            return;
+            continue;
         }
         l = l.replace(/\\\(/g, '(').replace(/\\\)/g, ')').replace(/\\\\/g, '');
         l = l.replace(/Vơ Hoàng Tuấn/g, 'Võ Hoàng Tuấn');
@@ -635,7 +649,7 @@ function cleanCellLines(lines) {
         l = splitGluedVietnameseWords(l);
 
         clean.push(l);
-    });
+    }
 
     return clean;
 }

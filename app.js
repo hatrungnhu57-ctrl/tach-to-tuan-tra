@@ -496,6 +496,20 @@ function cleanCellLines(lines) {
     raw = raw.replace(/(2\.\s*Kiểm soát\s*tại[^:]*):?\s*\+\d+/gi, '$1:');
     raw = raw.replace(/:\s*\+\d+/g, ':');
 
+    // Fix and unify wrapped headings
+    raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*cơ\s*động\s*kết\s*\n*\s*hợp\s*với\s*kiểm\s*soát\s*tại\s*một\s*điểm\s*\n*\s*trên\s*đường\s*giao\s*thông:?/gi, '* Tuần tra, kiểm soát cơ động kết hợp với kiểm soát tại một điểm trên đường giao thông:');
+    raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*công\s*khai\s*\n*\s*kết\s*hợp\s*với\s*hoá\s*trang:?/gi, '* Tuần tra, kiểm soát công khai kết hợp với hoá trang:');
+    raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*công\s*khai\s*\n*\s*kết\s*hợp\s*với\s*hóa\s*trang:?/gi, '* Tuần tra, kiểm soát công khai kết hợp với hoá trang:');
+    raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*công\s*khai\s*kết\s*hợp\s*với\s*hoá\s*trang:?/gi, '* Tuần tra, kiểm soát công khai kết hợp với hoá trang:');
+    raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*công\s*khai\s*kết\s*hợp\s*với\s*hóa\s*trang:?/gi, '* Tuần tra, kiểm soát công khai kết hợp với hoá trang:');
+    raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*cơ\s*động:?/gi, '* Tuần tra, kiểm soát cơ động:');
+    raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*công\s*khai:?/gi, '* Tuần tra, kiểm soát công khai:');
+    raw = raw.replace(/\*?\s*Kiểm\s*soát\s*tại\s*một\s*điểm\s*trên\s*đường\s*giao\s*thông:?/gi, '* Kiểm soát tại một điểm trên đường giao thông:');
+
+    // Separate multiple headers or sub-items onto new lines
+    raw = raw.replace(/([^\n])\s*(\*\s*Tuần tra|\b1\.\s*Tuần tra|\b2\.\s*Kiểm soát|\*\s*Kiểm soát)/gi, '$1\n$2');
+    raw = raw.replace(/([^\n])\s*(-\s*Tuyến:|-\s*Thời gian:|-\s*Đối tượng:|-\s*Nhiệm vụ:)/gi, '$1\n$2');
+
     // 2. Standardize Route 1 (Trà Vinh cũ): QL53 (Km 43+108 -> 166+858), QL53B, QL54 (82+700 -> 148+200), QL60 (11+308 -> 101+226)
     if (raw.includes('QL53') && (raw.includes('43') || raw.includes('166')) && raw.includes('Trà Vinh cũ')) {
         raw = raw.replace(
@@ -1057,19 +1071,42 @@ function renderScheduleTable() {
 
         const elDateRange = document.getElementById('doc-date-range');
         if (elDateRange && currentDocMetadata.dateRange) elDateRange.innerText = currentDocMetadata.dateRange;
-
-        const elIntro = document.getElementById('doc-intro-text');
-        if (elIntro && currentDocMetadata.introText) elIntro.innerText = currentDocMetadata.introText;
-
-        const elSec2 = document.getElementById('doc-section2-text');
-        if (elSec2 && currentDocMetadata.section2Text) elSec2.innerText = currentDocMetadata.section2Text;
-
-        const elSignerDT = document.getElementById('doc-signer-doitruong');
-        if (elSignerDT && currentDocMetadata.signerDoiTruong) elSignerDT.innerText = currentDocMetadata.signerDoiTruong;
-
-        const elSignerLD = document.getElementById('doc-signer-lanhdao');
-        if (elSignerLD && currentDocMetadata.signerLanhDao) elSignerLD.innerText = currentDocMetadata.signerLanhDao;
     }
+}
+
+function isHeaderLine(l) {
+    if (!l) return false;
+    l = l.trim();
+
+    // 1. Starts with * or number like 1., 2., 3., etc.
+    if (/^(\*|\d+\.)/i.test(l)) {
+        if (/Tuần\s*tra|Kiểm\s*soát|cơ\s*động|công\s*khai|hoá\s*trang|hóa\s*trang|kết\s*hợp|PC02|CAX|Phối\s*hợp|64A1|64A|84E/i.test(l) || l.endsWith(':')) {
+            return true;
+        }
+    }
+
+    // 2. Headings with or without asterisk / number
+    if (/^\*?\s*Tuần\s*tra,\s*kiểm\s*soát/i.test(l)) {
+        return true;
+    }
+
+    if (/^\*?\s*Kiểm\s*soát\s*tại\s*một\s*điểm\s*trên\s*đường\s*giao\s*thông/i.test(l)) {
+        return true;
+    }
+
+    if (/^\*?\s*(?:kết\s*hợp\s*với|hợp\s*với)\s*(?:hoá\s*trang|hóa\s*trang|kiểm\s*soát)/i.test(l)) {
+        return true;
+    }
+
+    if (/^hợp\s*với\s*kiểm\s*soát\s*tại\s*một\s*điểm/i.test(l) || /^trên\s*đường\s*giao\s*thông:?$/i.test(l)) {
+        return true;
+    }
+
+    if (/^-?\s*Hành\s*vi\s*vi\s*phạm.*gồm:?$/i.test(l)) {
+        return true;
+    }
+
+    return false;
 }
 
 function renderGeneralLinesHtml(lines) {
@@ -1078,8 +1115,8 @@ function renderGeneralLinesHtml(lines) {
         l = l.trim();
         if (!l) return '';
 
-        // 1. Headers: Full bold lines up to colon
-        if (/^(\*|1\.|2\.|3\.|4\.|5\.|6\.|7\.|8\.|9\.)/i.test(l) && (l.includes('Tuần tra') || l.includes('Kiểm soát') || l.includes('PC02') || l.endsWith(':') || l.startsWith('* 64') || l.startsWith('*64'))) {
+        // 1. Headers: Full bold lines
+        if (isHeaderLine(l)) {
             return `<div class="font-bold mt-1">${renderHtmlWithSuperscripts(l)}</div>`;
         }
 
@@ -1089,11 +1126,6 @@ function renderGeneralLinesHtml(lines) {
             const prefix = l.substring(0, colonIdx + 1);
             const content = l.substring(colonIdx + 1).trim();
             return `<div><strong class="font-bold">${escapeHtml(prefix)}</strong> ${renderHtmlWithSuperscripts(content)}</div>`;
-        }
-
-        // 3. Special header: - Hành vi vi phạm...gồm:
-        if (/^- Hành vi vi phạm.*gồm:?$/i.test(l)) {
-            return `<div class="font-bold">${escapeHtml(l)}</div>`;
         }
 
         return `<div>${renderHtmlWithSuperscripts(l)}</div>`;
@@ -1106,8 +1138,8 @@ function renderCol6LinesHtml(lines) {
         l = l.trim();
         if (!l) return '';
 
-        // 1. Vehicle header: * 64A1 - 010.62...
-        if (l.startsWith('*') || /\d{2}[A-Z]\d?\s*-\s*[\d\.]+/.test(l)) {
+        // 1. Vehicle header or general header: Full bold
+        if (isHeaderLine(l) || l.startsWith('*') || /\d{2}[A-Z]\d?\s*-\s*[\d\.]+/.test(l)) {
             return `<div class="font-bold text-slate-950 mt-1">${escapeHtml(l)}</div>`;
         }
 
@@ -1118,6 +1150,10 @@ function renderCol6LinesHtml(lines) {
             const content = l.substring(colonIdx + 1).trim();
             return `<div><strong class="font-bold">${escapeHtml(prefix)}</strong> ${escapeHtml(content)}</div>`;
         }
+
+        return `<div>${escapeHtml(l)}</div>`;
+    }).join('');
+}
 
         return `<div>${escapeHtml(l)}</div>`;
     }).join('');
@@ -1305,10 +1341,6 @@ btnExportDocx.addEventListener('click', async () => {
         const headerDate = currentDocMetadata?.headerDate || "Vĩnh Long, ngày 28 tháng 9 năm 2026";
         const docTitle = currentDocMetadata?.title || "KẾ HOẠCH CÔNG TÁC TUẦN";
         const dateRange = currentDocMetadata?.dateRange || "(Từ ngày 28/9/2026 đến ngày 04/10/2026)";
-        const introText = currentDocMetadata?.introText || "1. Thực hiện Kế hoạch số 121/KH-PC08 ngày 22/10/2024 của Phòng PC08, Công an tỉnh Vĩnh Long về thực hiện cao điểm tổng rà soát, phát hiện, thống kê người điều khiển phương tiện mà trong cơ thể có chất ma túy; các điểm, tụ điểm phức tạp về ma túy và đấu tranh, phòng chống tội phạm về ma túy của lực lượng Cảnh sát giao thông trên địa bàn tỉnh; Kế hoạch số 2487/KH-CAT ngày 30/12/2025 của Công an tỉnh về huy động lực lượng khác trong Công an tỉnh phối hợp tuần tra, kiểm soát bảo đảm trật tự, an toàn giao thông đường bộ; Kế hoạch 22/KH-PC08 ngày 18/3/2026 của Phòng PC08 về việc tuần tra, kiểm tra, kiểm soát, xử lý các chuyên đề vi phạm là nguyên nhân chính gây tai nạn giao thông trên các tuyến giao thông đường bộ; Kế hoạch số 166/KH-PC08 ngày 09/6/2026 của Phòng PC08 về việc thực hiện cao điểm phối hợp tuyên truyền, tấn công trấn áp tội phạm về ma tuý giữa Việt Nam, Trung Quốc, Lào và Myanmar trên các tuyến giao thông của lực lượng Cảnh sát giao thông; Kế hoạch số 399/KH-CAT-PC08 ngày 25/8/2026 của Công an tỉnh về tổng kiểm soát, xử lý vi phạm về trật tự an toàn giao thông đường bộ đối với phương tiện kinh doanh vận tải trên địa bàn tỉnh; Kế hoạch số 197/KH-PC08 ngày 14/9/2026 của Phòng PC08 về việc phối hợp tuần tra, kiểm soát phòng, chống đua xe trái phép và phòng chống các loại tội phạm hoạt động theo các tuyến giao thông trên địa bàn tỉnh; Căn cứ kết quả công tác điều tra cơ bản tuyến, điều tra, giải quyết tai nạn giao thông, kết quả xử lý vi phạm giao thông, tình hình trật tự, an toàn giao thông, trật tự xã hội, vi phạm giao thông nổi lên từ ngày 21/9/2026 đến ngày 27/9/2026, Đội Cảnh sát giao thông đường bộ xây dựng kế hoạch công tác tuần như sau:";
-        const sec2Text = currentDocMetadata?.section2Text || "Tùy theo tình hình thực tế giao cho chỉ huy Đội Cảnh sát giao thông đường bộ báo cáo Lãnh đạo phòng thay đổi tuyến, địa bàn, thời gian, lực lượng, phương tiện, thiết bị kỹ thuật nghiệp vụ, công cụ hỗ trợ và các điều kiện khác trong kế hoạch ngày cho phù hợp.";
-        const signerDT = currentDocMetadata?.signerDoiTruong || "Thượng tá Trần Văn Tiếp";
-        const signerLD = currentDocMetadata?.signerLanhDao || "Thượng tá Nguyễn Ngọc Ân";
 
         // 6. word/document.xml (Completely free of raw \n in <w:t>)
         const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -1354,10 +1386,6 @@ btnExportDocx.addEventListener('click', async () => {
         ${makePPr("center", 150, 0, 240)}
         <w:r>${makeRPr("Times New Roman", true, true, 24)}<w:t>${escapeXml(dateRange)}</w:t></w:r>
     </w:p>
-    <w:p>
-        ${makePPr("both", 150, 0, 260)}
-        <w:r>${makeRPr("Times New Roman", false, false, 22)}<w:t>${escapeXml(introText)}</w:t></w:r>
-    </w:p>
     <w:tbl>
         <w:tblPr>
             <w:tblW w:w="15000" w:type="dxa"/>
@@ -1381,52 +1409,9 @@ btnExportDocx.addEventListener('click', async () => {
         </w:tblGrid>
         ${tableRowsXml}
     </w:tbl>
-    <w:p>
-        ${makePPr("left", 40, 150, 240)}
-        <w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>2. Thực hiện yêu cầu, nhiệm vụ khác của Trưởng phòng (nếu có):</w:t></w:r>
-    </w:p>
-    <w:p>
-        ${makePPr("left", 150, 0, 240)}
-        <w:r>${makeRPr("Times New Roman", false, false, 22)}<w:t>${escapeXml(sec2Text)}</w:t></w:r>
-    </w:p>
-    <w:tbl>
-        <w:tblPr>
-            <w:tblW w:w="15000" w:type="dxa"/>
-            <w:jc w:val="center"/>
-            <w:tblBorders>
-                <w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/><w:insideH w:val="none"/><w:insideV w:val="none"/>
-            </w:tblBorders>
-        </w:tblPr>
-        <w:tblGrid>
-            <w:gridCol w:w="5000"/>
-            <w:gridCol w:w="5000"/>
-            <w:gridCol w:w="5000"/>
-        </w:tblGrid>
-        <w:tr>
-            <w:tc>
-                <w:tcPr><w:tcW w:w="5000" w:type="dxa"/></w:tcPr>
-                <w:p>${makePPr("left", 20, 0, 240)}<w:r>${makeRPr("Times New Roman", true, true, 22)}<w:t>Nơi nhận:</w:t></w:r></w:p>
-                <w:p>${makePPr("left", 10, 0, 240)}<w:r>${makeRPr("Times New Roman", false, false, 20)}<w:t>- Đ/c Trưởng phòng (để chỉ đạo);</w:t></w:r></w:p>
-                <w:p>${makePPr("left", 10, 0, 240)}<w:r>${makeRPr("Times New Roman", false, false, 20)}<w:t>- Đ/c PTP phụ trách (để chỉ đạo);</w:t></w:r></w:p>
-                <w:p>${makePPr("left", 10, 0, 240)}<w:r>${makeRPr("Times New Roman", false, false, 20)}<w:t>- PC02, PC06, PK02, CAX (để p/h thực hiện);</w:t></w:r></w:p>
-                <w:p>${makePPr("left", 10, 0, 240)}<w:r>${makeRPr("Times New Roman", false, false, 20)}<w:t>- Lưu: Đội CSGTĐB, VT.</w:t></w:r></w:p>
-            </w:tc>
-            <w:tc>
-                <w:tcPr><w:tcW w:w="5000" w:type="dxa"/></w:tcPr>
-                <w:p>${makePPr("center", 800, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>ĐỘI TRƯỞNG</w:t></w:r></w:p>
-                <w:p>${makePPr("center", 0, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>${escapeXml(signerDT)}</w:t></w:r></w:p>
-            </w:tc>
-            <w:tc>
-                <w:tcPr><w:tcW w:w="5000" w:type="dxa"/></w:tcPr>
-                <w:p>${makePPr("center", 20, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>KT. TRƯỞNG PHÒNG</w:t></w:r></w:p>
-                <w:p>${makePPr("center", 800, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>PHÓ TRƯỞNG PHÒNG</w:t></w:r></w:p>
-                <w:p>${makePPr("center", 0, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>${escapeXml(signerLD)}</w:t></w:r></w:p>
-            </w:tc>
-        </w:tr>
-    </w:tbl>
     <w:sectPr>
         <w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/>
-        <w:pgMar w:top="1440" w:bottom="1440" w:left="1440" w:right="1440" w:header="720" w:footer="720"/>
+        <w:pgMar w:top="900" w:bottom="900" w:left="900" w:right="900" w:header="720" w:footer="720"/>
     </w:sectPr>
   </w:body>
 </w:document>`;
@@ -1525,8 +1510,8 @@ function makeDocxXmlWithSuperscript(lines, widthDxa, fontSize = 20) {
         l = l.trim();
         const pPr = makePPr("left", 20, 0, 220);
 
-        // 1. Full bold lines: headers starting with * or 1. or 2.
-        if (/^(\*|1\.|2\.|3\.|4\.|5\.|6\.|7\.|8\.|9\.)/i.test(l) && (l.includes('Tuần tra') || l.includes('Kiểm soát') || l.includes('PC02') || l.endsWith(':') || l.startsWith('* 64') || l.startsWith('*64'))) {
+        // 1. Full bold lines: headers
+        if (isHeaderLine(l)) {
             return `<w:p>${pPr}${formatDocxChainageRuns(l, true, fontSize)}</w:p>`;
         }
 
@@ -1537,11 +1522,6 @@ function makeDocxXmlWithSuperscript(lines, widthDxa, fontSize = 20) {
             const content = l.substring(colonIdx + 1).trim();
             const r1Pr = makeRPr("Times New Roman", true, false, fontSize);
             return `<w:p>${pPr}<w:r>${r1Pr}<w:t xml:space="preserve">${escapeXml(prefix)} </w:t></w:r>${formatDocxChainageRuns(content, false, fontSize)}</w:p>`;
-        }
-
-        if (/^- Hành vi vi phạm.*gồm:?$/i.test(l)) {
-            const rPr = makeRPr("Times New Roman", true, false, fontSize);
-            return `<w:p>${pPr}<w:r>${rPr}<w:t>${escapeXml(l)}</w:t></w:r></w:p>`;
         }
 
         return `<w:p>${pPr}${formatDocxChainageRuns(l, false, fontSize)}</w:p>`;
@@ -1597,8 +1577,8 @@ function makeDocxXmlCol6(lines, widthDxa, fontSize = 20) {
         l = l.trim();
         const pPr = makePPr("left", 20, 0, 220);
 
-        // 1. Vehicle headers: * 64A1 - ...
-        if (l.startsWith('*') || /\d{2}[A-Z]\d?\s*-\s*[\d\.]+/.test(l)) {
+        // 1. Vehicle headers or general header: Full bold
+        if (isHeaderLine(l) || l.startsWith('*') || /\d{2}[A-Z]\d?\s*-\s*[\d\.]+/.test(l)) {
             const rPr = makeRPr("Times New Roman", true, false, fontSize);
             return `<w:p>${pPr}<w:r>${rPr}<w:t>${escapeXml(l)}</w:t></w:r></w:p>`;
         }
@@ -1632,11 +1612,13 @@ function makeDocxXmlGeneral(lines, widthDxa, fontSize = 20) {
         l = l.trim();
         const pPr = makePPr("left", 20, 0, 220);
 
-        if (/^(\*|1\.|2\.|3\.|4\.|5\.|6\.|7\.|8\.|9\.)/i.test(l) && (l.includes('Tuần tra') || l.includes('Kiểm soát') || l.includes('PC02') || l.endsWith(':'))) {
+        // 1. Headers: Full bold
+        if (isHeaderLine(l)) {
             const rPr = makeRPr("Times New Roman", true, false, fontSize);
             return `<w:p>${pPr}<w:r>${rPr}<w:t>${escapeXml(l)}</w:t></w:r></w:p>`;
         }
 
+        // 2. Lines starting with - and having colon: In đậm từ đầu dòng đến dấu :
         if (l.startsWith('-') && l.includes(':')) {
             const colonIdx = l.indexOf(':');
             const prefix = l.substring(0, colonIdx + 1);
@@ -1644,11 +1626,6 @@ function makeDocxXmlGeneral(lines, widthDxa, fontSize = 20) {
             const r1Pr = makeRPr("Times New Roman", true, false, fontSize);
             const r2Pr = makeRPr("Times New Roman", false, false, fontSize);
             return `<w:p>${pPr}<w:r>${r1Pr}<w:t xml:space="preserve">${escapeXml(prefix)} </w:t></w:r><w:r>${r2Pr}<w:t>${escapeXml(content)}</w:t></w:r></w:p>`;
-        }
-
-        if (/^- Hành vi vi phạm.*gồm:?$/i.test(l)) {
-            const rPr = makeRPr("Times New Roman", true, false, fontSize);
-            return `<w:p>${pPr}<w:r>${rPr}<w:t>${escapeXml(l)}</w:t></w:r></w:p>`;
         }
 
         const rPr = makeRPr("Times New Roman", false, false, fontSize);

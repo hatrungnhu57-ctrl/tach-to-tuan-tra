@@ -470,6 +470,9 @@ function cleanCellLines(lines) {
         l = l.replace(/nồn g độ/g, 'nồng độ');
         l = l.replace(/tỉnhVĩnh/g, 'tỉnh Vĩnh');
         l = l.replace(/Tổ 1 7/g, 'Tổ 17');
+        l = l.replace(/\bTổ\s+(\d)\s+(\d)\b/g, 'Tổ $1$2');
+        l = l.replace(/\b(\d{2})\s+([A-Z]\d?)\b/g, '$1$2');
+        l = l.replace(/(\d+)\s+h(\d+)/gi, '$1h$2');
         l = l.replace(/họp với/g, 'hợp với');
 
         // Apply word splitter

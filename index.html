@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title></title>
+    <!-- Google Fonts: Tinos (Metrically compatible with Times New Roman) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tinos:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PDF.js -->
@@ -14,7 +18,18 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        .font-times { font-family: "Times New Roman", Times, serif; }
+
+        /* STRICT TIMES NEW ROMAN ENFORCEMENT ACROSS ALL BROWSERS & DEVICES */
+        .font-times,
+        .font-times *,
+        .doc-container,
+        .doc-container *,
+        #result-section .doc-container,
+        #result-section .doc-container *,
+        #schedule-table-body,
+        #schedule-table-body * {
+            font-family: "Times New Roman", Times, "Tinos", "TimesNewRoman", "Liberation Serif", "FreeSerif", serif !important;
+        }
 
         /* Print / PDF Styling - Completely eliminates URL, timestamp and browser headers */
         @media print {
@@ -27,7 +42,7 @@
                 color: black !important;
                 margin: 0 !important;
                 padding: 12mm 10mm 12mm 10mm !important; /* Official document page margin */
-                font-family: "Times New Roman", Times, serif !important;
+                font-family: "Times New Roman", Times, "Tinos", "TimesNewRoman", serif !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
@@ -37,7 +52,8 @@
             .print-only {
                 display: block !important;
             }
-            .doc-container {
+            .doc-container,
+            .doc-container * {
                 max-width: 100% !important;
                 width: 100% !important;
                 margin: 0 !important;
@@ -45,11 +61,13 @@
                 border: none !important;
                 box-shadow: none !important;
                 background: white !important;
+                font-family: "Times New Roman", Times, "Tinos", "TimesNewRoman", serif !important;
             }
             table {
                 width: 100% !important;
                 border-collapse: collapse !important;
                 page-break-inside: auto;
+                font-family: "Times New Roman", Times, "Tinos", "TimesNewRoman", serif !important;
             }
             tr {
                 page-break-inside: avoid !important;
@@ -57,10 +75,12 @@
             }
             thead {
                 display: table-header-group;
+                font-family: "Times New Roman", Times, "Tinos", "TimesNewRoman", serif !important;
             }
             th, td {
                 border: 1px solid black !important;
                 color: black !important;
+                font-family: "Times New Roman", Times, "Tinos", "TimesNewRoman", serif !important;
             }
         }
     </style>
@@ -320,6 +340,6 @@
     </footer>
 
     <!-- App Logic (Cache-busted) -->
-    <script src="app.js?v=2.1"></script>
+    <script src="app.js?v=2.2"></script>
 </body>
 </html>

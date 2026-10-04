@@ -1248,7 +1248,7 @@ function makeTcPr(widthDxa, vMerge = null, gridSpan = null, shading = null, vAli
         </w:tcBorders>`;
     }
     if (shading) xml += `<w:shd w:val="clear" w:fill="${shading}"/>`;
-    xml += `<w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar>`;
+    xml += `<w:tcMar><w:top w:w="40" w:type="dxa"/><w:bottom w:w="40" w:type="dxa"/><w:left w:w="80" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tcMar>`;
     if (vAlign) xml += `<w:vAlign w:val="${vAlign}"/>`;
     xml += `</w:tcPr>`;
     return xml;
@@ -1365,27 +1365,27 @@ btnExportDocx.addEventListener('click', async () => {
             if (!day.tvTos || day.tvTos.length === 0) return;
 
             day.tvTos.forEach((s, idx) => {
-                tableRowsXml += `<w:tr><w:trPr><w:cantSplit/></w:trPr>`;
+                tableRowsXml += `<w:tr>`;
 
                 // Col 1: Date with vMerge
                 if (idx === 0) {
                     const tcPr = makeTcPr(1300, "restart", null, null, "center", true);
-                    const p1Pr = makePPr("center", 20, 0, 240);
-                    const r1Pr = makeRPr("Times New Roman", true, false, 22);
-                    const p2Pr = makePPr("center", 0, 0, 240);
-                    const r2Pr = makeRPr("Times New Roman", true, false, 20);
+                    const p1Pr = makePPr("center", 10, 0, 200);
+                    const r1Pr = makeRPr("Times New Roman", true, false, 20);
+                    const p2Pr = makePPr("center", 0, 0, 200);
+                    const r2Pr = makeRPr("Times New Roman", true, false, 18);
                     tableRowsXml += `<w:tc>${tcPr}<w:p>${p1Pr}<w:r>${r1Pr}<w:t>${escapeXml(day.day)}</w:t></w:r></w:p><w:p>${p2Pr}<w:r>${r2Pr}<w:t>${escapeXml(day.date)}</w:t></w:r></w:p></w:tc>`;
                 } else {
                     const tcPr = makeTcPr(1300, "continue", null, null, "center", true);
-                    const pPr = makePPr("left", 0, 0, 240);
+                    const pPr = makePPr("left", 0, 0, 200);
                     tableRowsXml += `<w:tc>${tcPr}<w:p>${pPr}</w:p></w:tc>`;
                 }
 
-                tableRowsXml += makeDocxXmlCol2(s.col2Lines, 2200, 22);
-                tableRowsXml += makeDocxXmlGeneral(s.col3Lines, 1300, 20);
-                tableRowsXml += makeDocxXmlWithSuperscript(s.col4Lines, 3600, 20);
-                tableRowsXml += makeDocxXmlGeneral(s.col5Lines, 2900, 20);
-                tableRowsXml += makeDocxXmlCol6(s.col6Lines, 3700, 20);
+                tableRowsXml += makeDocxXmlCol2(s.col2Lines, 2200, 20);
+                tableRowsXml += makeDocxXmlGeneral(s.col3Lines, 1300, 18);
+                tableRowsXml += makeDocxXmlWithSuperscript(s.col4Lines, 3600, 18);
+                tableRowsXml += makeDocxXmlGeneral(s.col5Lines, 2900, 18);
+                tableRowsXml += makeDocxXmlCol6(s.col6Lines, 3700, 18);
 
                 tableRowsXml += `</w:tr>`;
             });
@@ -1403,10 +1403,10 @@ btnExportDocx.addEventListener('click', async () => {
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <w:body>
     <w:p>
-        ${makePPr("right", 100, 0, 240)}
+        ${makePPr("right", 30, 0, 200)}
         <w:r>${makeRPr("Times New Roman", true, false, 20)}<w:t>Mẫu số 03/TT</w:t></w:r>
-        <w:r><w:rPr><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:br/></w:r>
-        <w:r>${makeRPr("Times New Roman", false, true, 18)}<w:t>(Kèm theo Thông tư số 14/2025/TT-BCA ngày 28/02/2025 của Bộ trưởng Bộ Công an)</w:t></w:r>
+        <w:r><w:rPr><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr><w:br/></w:r>
+        <w:r>${makeRPr("Times New Roman", false, true, 16)}<w:t>(Kèm theo Thông tư số 14/2025/TT-BCA ngày 28/02/2025 của Bộ trưởng Bộ Công an)</w:t></w:r>
     </w:p>
     <w:tbl>
         <w:tblPr>
@@ -1423,24 +1423,24 @@ btnExportDocx.addEventListener('click', async () => {
         <w:tr>
             <w:tc>
                 <w:tcPr><w:tcW w:w="7000" w:type="dxa"/></w:tcPr>
-                <w:p>${makePPr("center", 40, 0, 240)}<w:r>${makeRPr("Times New Roman", false, false, 24)}<w:t>${escapeXml(agencyDept)}</w:t></w:r></w:p>
-                <w:p>${makePPr("center", 20, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>${escapeXml(agencyTeam)}</w:t></w:r></w:p>
+                <w:p>${makePPr("center", 20, 0, 200)}<w:r>${makeRPr("Times New Roman", false, false, 22)}<w:t>${escapeXml(agencyDept)}</w:t></w:r></w:p>
+                <w:p>${makePPr("center", 10, 0, 200)}<w:r>${makeRPr("Times New Roman", true, false, 22)}<w:t>${escapeXml(agencyTeam)}</w:t></w:r></w:p>
             </w:tc>
             <w:tc>
                 <w:tcPr><w:tcW w:w="8000" w:type="dxa"/></w:tcPr>
-                <w:p>${makePPr("center", 40, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</w:t></w:r></w:p>
-                <w:p>${makePPr("center", 60, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>Độc lập - Tự do - Hạnh phúc</w:t></w:r></w:p>
-                <w:p>${makePPr("center", 40, 0, 240)}<w:r>${makeRPr("Times New Roman", false, true, 22)}<w:t>${escapeXml(headerDate)}</w:t></w:r></w:p>
+                <w:p>${makePPr("center", 20, 0, 200)}<w:r>${makeRPr("Times New Roman", true, false, 22)}<w:t>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</w:t></w:r></w:p>
+                <w:p>${makePPr("center", 30, 0, 200)}<w:r>${makeRPr("Times New Roman", true, false, 22)}<w:t>Độc lập - Tự do - Hạnh phúc</w:t></w:r></w:p>
+                <w:p>${makePPr("center", 20, 0, 200)}<w:r>${makeRPr("Times New Roman", false, true, 20)}<w:t>${escapeXml(headerDate)}</w:t></w:r></w:p>
             </w:tc>
         </w:tr>
     </w:tbl>
     <w:p>
-        ${makePPr("center", 40, 150, 240)}
-        <w:r>${makeRPr("Times New Roman", true, false, 30)}<w:t>${escapeXml(docTitle)}</w:t></w:r>
+        ${makePPr("center", 20, 50, 200)}
+        <w:r>${makeRPr("Times New Roman", true, false, 28)}<w:t>${escapeXml(docTitle)}</w:t></w:r>
     </w:p>
     <w:p>
-        ${makePPr("center", 150, 0, 240)}
-        <w:r>${makeRPr("Times New Roman", true, true, 24)}<w:t>${escapeXml(dateRange)}</w:t></w:r>
+        ${makePPr("center", 60, 0, 200)}
+        <w:r>${makeRPr("Times New Roman", true, true, 22)}<w:t>${escapeXml(dateRange)}</w:t></w:r>
     </w:p>
     <w:tbl>
         <w:tblPr>
@@ -1467,7 +1467,7 @@ btnExportDocx.addEventListener('click', async () => {
     </w:tbl>
     <w:sectPr>
         <w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/>
-        <w:pgMar w:top="900" w:bottom="900" w:left="900" w:right="900" w:header="720" w:footer="720"/>
+        <w:pgMar w:top="720" w:bottom="720" w:left="900" w:right="900" w:header="360" w:footer="360"/>
     </w:sectPr>
   </w:body>
 </w:document>`;
@@ -1510,10 +1510,10 @@ function escapeXml(unsafe) {
     });
 }
 
-function makeDocxXmlCol2(lines, widthDxa, fontSize = 22) {
+function makeDocxXmlCol2(lines, widthDxa, fontSize = 20) {
     if (!lines || lines.length === 0) {
         const tcPr = makeTcPr(widthDxa, null, null, null, "top", true);
-        const pPr = makePPr("left", 0, 0, 240);
+        const pPr = makePPr("left", 0, 0, 200);
         return `<w:tc>${tcPr}<w:p>${pPr}</w:p></w:tc>`;
     }
 
@@ -1521,7 +1521,7 @@ function makeDocxXmlCol2(lines, widthDxa, fontSize = 22) {
     const parasXml = lines.map(l => {
         l = l.trim();
         l = l.replace(/\bTổ\s+(\d)\s+(\d)\b/g, 'Tổ $1$2');
-        const pPr = makePPr("left", 30, 0, 240);
+        const pPr = makePPr("left", 15, 0, 200);
 
         if (/^Tổ\s+\d+/i.test(l)) {
             const rPr = makeRPr("Times New Roman", true, false, fontSize);
@@ -1554,17 +1554,17 @@ function makeDocxXmlCol2(lines, widthDxa, fontSize = 22) {
     return `<w:tc>${tcPr}${parasXml}</w:tc>`;
 }
 
-function makeDocxXmlWithSuperscript(lines, widthDxa, fontSize = 20) {
+function makeDocxXmlWithSuperscript(lines, widthDxa, fontSize = 18) {
     if (!lines || lines.length === 0) {
         const tcPr = makeTcPr(widthDxa, null, null, null, "top", true);
-        const pPr = makePPr("left", 0, 0, 240);
+        const pPr = makePPr("left", 0, 0, 200);
         return `<w:tc>${tcPr}<w:p>${pPr}</w:p></w:tc>`;
     }
 
     const tcPr = makeTcPr(widthDxa, null, null, null, "top", true);
     const parasXml = lines.map(l => {
         l = l.trim();
-        const pPr = makePPr("left", 20, 0, 220);
+        const pPr = makePPr("left", 15, 0, 200);
 
         // 1. Full bold lines: headers
         if (isHeaderLine(l)) {
@@ -1621,17 +1621,17 @@ function formatDocxChainageRuns(text, isBold, fontSize) {
     return runsXml || `<w:r>${makeRPr("Times New Roman", isBold, false, fontSize)}<w:t xml:space="preserve">${escapeXml(text)}</w:t></w:r>`;
 }
 
-function makeDocxXmlCol6(lines, widthDxa, fontSize = 20) {
+function makeDocxXmlCol6(lines, widthDxa, fontSize = 18) {
     if (!lines || lines.length === 0) {
         const tcPr = makeTcPr(widthDxa, null, null, null, "top", true);
-        const pPr = makePPr("left", 0, 0, 240);
+        const pPr = makePPr("left", 0, 0, 200);
         return `<w:tc>${tcPr}<w:p>${pPr}</w:p></w:tc>`;
     }
 
     const tcPr = makeTcPr(widthDxa, null, null, null, "top", true);
     const parasXml = lines.map(l => {
         l = l.trim();
-        const pPr = makePPr("left", 20, 0, 220);
+        const pPr = makePPr("left", 15, 0, 200);
 
         // 1. Vehicle headers or general header: Full bold
         if (isHeaderLine(l) || l.startsWith('*') || /\d{2}[A-Z]\d?\s*-\s*[\d\.]+/.test(l)) {
@@ -1656,17 +1656,17 @@ function makeDocxXmlCol6(lines, widthDxa, fontSize = 20) {
     return `<w:tc>${tcPr}${parasXml}</w:tc>`;
 }
 
-function makeDocxXmlGeneral(lines, widthDxa, fontSize = 20) {
+function makeDocxXmlGeneral(lines, widthDxa, fontSize = 18) {
     if (!lines || lines.length === 0) {
         const tcPr = makeTcPr(widthDxa, null, null, null, "top", true);
-        const pPr = makePPr("left", 0, 0, 240);
+        const pPr = makePPr("left", 0, 0, 200);
         return `<w:tc>${tcPr}<w:p>${pPr}</w:p></w:tc>`;
     }
 
     const tcPr = makeTcPr(widthDxa, null, null, null, "top", true);
     const parasXml = lines.map(l => {
         l = l.trim();
-        const pPr = makePPr("left", 20, 0, 220);
+        const pPr = makePPr("left", 15, 0, 200);
 
         // 1. Headers: Full bold
         if (isHeaderLine(l)) {

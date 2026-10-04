@@ -134,16 +134,62 @@ btnResetDefaultOfficers.addEventListener('click', () => {
     }
 });
 
+function handleSelectedFile(file) {
+    if (!file) return;
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (!isPdf) {
+        alert("Vui lòng chọn hoặc kéo thả file có định dạng PDF (.pdf)!");
+        return;
+    }
+
+    currentPdfFile = file;
+    uploadStatusText.innerText = `Đã chọn: ${file.name}`;
+    uploadDetailText.innerText = `Kích thước: ${(file.size / (1024 * 1024)).toFixed(2)} MB - Sẵn sàng tách ca`;
+    btnProcess.disabled = false;
+    statusLabel.innerText = "Đã nạp file PDF";
+
+    // Auto-process for convenience
+    btnProcess.click();
+}
+
+pdfFileInput.addEventListener('click', () => {
+    pdfFileInput.value = '';
+});
+
 pdfFileInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file && file.type === 'application/pdf') {
-        currentPdfFile = file;
-        uploadStatusText.innerText = `Đã chọn: ${file.name}`;
-        uploadDetailText.innerText = `Kích thước: ${(file.size / (1024 * 1024)).toFixed(2)} MB - Sẵn sàng tách ca`;
-        btnProcess.disabled = false;
-        statusLabel.innerText = "Đã nạp file PDF";
+    const file = e.target.files && e.target.files[0];
+    if (file) {
+        handleSelectedFile(file);
     }
 });
+
+// Dropzone Drag & Drop Support
+const dropZone = document.querySelector('label[for="pdf-file-input"]');
+if (dropZone) {
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.add('border-red-600', 'bg-red-50/50');
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove('border-red-600', 'bg-red-50/50');
+        });
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const file = dt && dt.files && dt.files[0];
+        if (file) {
+            handleSelectedFile(file);
+        }
+    });
+}
 
 if (window.pdfjsLib) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -1150,10 +1196,6 @@ function renderCol6LinesHtml(lines) {
             const content = l.substring(colonIdx + 1).trim();
             return `<div><strong class="font-bold">${escapeHtml(prefix)}</strong> ${escapeHtml(content)}</div>`;
         }
-
-        return `<div>${escapeHtml(l)}</div>`;
-    }).join('');
-}
 
         return `<div>${escapeHtml(l)}</div>`;
     }).join('');

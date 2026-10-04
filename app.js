@@ -485,9 +485,9 @@ function extractDocMetadata(allRuns) {
     const meta = {
         agencyDept: "PHÒNG CẢNH SÁT GIAO THÔNG",
         agencyTeam: "ĐỘI CẢNH SÁT GIAO THÔNG ĐƯỜNG BỘ",
-        headerDate: "Vĩnh Long, ngày 28 tháng 9 năm 2026",
+        headerDate: "",
         title: "KẾ HOẠCH CÔNG TÁC TUẦN",
-        dateRange: "(Từ ngày 28/9/2026 đến ngày 04/10/2026)",
+        dateRange: "",
         introText: "1. Thực hiện Kế hoạch số 121/KH-PC08 ngày 22/10/2024 của Phòng PC08, Công an tỉnh Vĩnh Long về thực hiện cao điểm tổng rà soát, phát hiện, thống kê người điều khiển phương tiện mà trong cơ thể có chất ma túy; các điểm, tụ điểm phức tạp về ma túy và đấu tranh, phòng chống tội phạm về ma túy của lực lượng Cảnh sát giao thông trên địa bàn tỉnh; Kế hoạch số 2487/KH-CAT ngày 30/12/2025 của Công an tỉnh về huy động lực lượng khác trong Công an tỉnh phối hợp tuần tra, kiểm soát bảo đảm trật tự, an toàn giao thông đường bộ; Kế hoạch 22/KH-PC08 ngày 18/3/2026 của Phòng PC08 về việc tuần tra, kiểm tra, kiểm soát, xử lý các chuyên đề vi phạm là nguyên nhân chính gây tai nạn giao thông trên các tuyến giao thông đường bộ; Kế hoạch số 166/KH-PC08 ngày 09/6/2026 của Phòng PC08 về việc thực hiện cao điểm phối hợp tuyên truyền, tấn công trấn áp tội phạm về ma tuý giữa Việt Nam, Trung Quốc, Lào và Myanmar trên các tuyến giao thông của lực lượng Cảnh sát giao thông; Kế hoạch số 399/KH-CAT-PC08 ngày 25/8/2026 của Công an tỉnh về tổng kiểm soát, xử lý vi phạm về trật tự an toàn giao thông đường bộ đối với phương tiện kinh doanh vận tải trên địa bàn tỉnh; Kế hoạch số 197/KH-PC08 ngày 14/9/2026 của Phòng PC08 về việc phối hợp tuần tra, kiểm soát phòng, chống đua xe trái phép và phòng chống các loại tội phạm hoạt động theo các tuyến giao thông trên địa bàn tỉnh; Căn cứ kết quả công tác điều tra cơ bản tuyến, điều tra, giải quyết tai nạn giao thông, kết quả xử lý vi phạm giao thông, tình hình trật tự, an toàn giao thông, trật tự xã hội, vi phạm giao thông nổi lên từ ngày 21/9/2026 đến ngày 27/9/2026, Đội Cảnh sát giao thông đường bộ xây dựng kế hoạch công tác tuần như sau:",
         section2Text: "Tùy theo tình hình thực tế giao cho chỉ huy Đội Cảnh sát giao thông đường bộ báo cáo Lãnh đạo phòng thay đổi tuyến, địa bàn, thời gian, lực lượng, phương tiện, thiết bị kỹ thuật nghiệp vụ, công cụ hỗ trợ và các điều kiện khác trong kế hoạch ngày cho phù hợp.",
         signerDoiTruong: "Thượng tá Trần Văn Tiếp",
@@ -500,49 +500,91 @@ function extractDocMetadata(allRuns) {
 
     const p1Runs = allRuns.filter(r => r.p === 1);
     const p1Lines = groupRunsToLines(p1Runs);
+    const p1FullText = p1Runs.map(r => r.text).join(' ');
 
     // 1. Header Date: e.g. "Vĩnh Long, ngày ... tháng ... năm ..."
+    let foundHeaderDate = "";
     for (const line of p1Lines) {
-        const m = line.match(/([A-ZÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬĐ][a-zàáảãạăằắẳẵặâầấẩẫậđ\s]+,\s*ngày\s+\d+\s+tháng\s+\d+\s+năm\s+\d{4})/i) ||
-                  line.match(/(ngày\s+\d+\s+tháng\s+\d+\s+năm\s+\d{4})/i);
+        const m = line.match(/([A-Za-zÀ-ỹ\s]+,\s*ngày\s+\d{1,2}\s+tháng\s+\d{1,2}\s+năm\s+\d{4})/i) ||
+                  line.match(/(ngày\s+\d{1,2}\s+tháng\s+\d{1,2}\s+năm\s+\d{4})/i);
         if (m) {
-            meta.headerDate = m[1].trim();
+            foundHeaderDate = m[1].trim();
             break;
         }
+    }
+    if (!foundHeaderDate) {
+        const m = p1FullText.match(/([A-Za-zÀ-ỹ\s]+,\s*ngày\s+\d{1,2}\s+tháng\s+\d{1,2}\s+năm\s+\d{4})/i) ||
+                  p1FullText.match(/(ngày\s+\d{1,2}\s+tháng\s+\d{1,2}\s+năm\s+\d{4})/i);
+        if (m) foundHeaderDate = m[1].trim();
+    }
+    if (foundHeaderDate) {
+        if (!foundHeaderDate.includes(',')) foundHeaderDate = 'Vĩnh Long, ' + foundHeaderDate;
+        meta.headerDate = foundHeaderDate;
     }
 
     // 2. Title: "KẾ HOẠCH CÔNG TÁC TUẦN ..."
     for (const line of p1Lines) {
-        if (/KẾ\s+HOẠCH\s+(?:CÔNG\s+TÁC\s+)?TUẦN/i.test(line)) {
-            meta.title = line.trim().toUpperCase();
+        const m = line.match(/(KẾ\s+HOẠCH\s+(?:CÔNG\s+TÁC\s+)?TUẦN(?:\s+\d+)?)/i);
+        if (m) {
+            meta.title = m[1].trim().toUpperCase();
             break;
         }
+    }
+    if (meta.title === "KẾ HOẠCH CÔNG TÁC TUẦN") {
+        const m = p1FullText.match(/(KẾ\s+HOẠCH\s+(?:CÔNG\s+TÁC\s+)?TUẦN(?:\s+\d+)?)/i);
+        if (m) meta.title = m[1].trim().toUpperCase();
     }
 
     // 3. Date Range: "(Từ ngày ... đến ngày ...)"
+    const drPatterns = [
+        /\(?\s*(?:Từ\s+ngày|từ\s+ngày|Từ|từ)\s*(\d{1,2})[\/\.\-](\d{1,2})(?:[\/\.\-](\d{2,4}))?\s*(?:đến\s+ngày|đến|-|–)\s*(\d{1,2})[\/\.\-](\d{1,2})(?:[\/\.\-](\d{2,4}))?\s*\)?/i,
+        /\((\d{1,2})[\/\.\-](\d{1,2})(?:[\/\.\-](\d{2,4}))?\s*(?:đến|-|–)\s*(\d{1,2})[\/\.\-](\d{1,2})(?:[\/\.\-](\d{2,4}))?\)/i
+    ];
+
+    let drMatch = null;
     for (const line of p1Lines) {
-        const m = line.match(/\(?\s*(?:Từ\s+ngày|từ\s+ngày)\s*[\d\/\.\-]+(?:\s+đến\s+ngày|\s*-\s*|\s+đến\s*)[\d\/\.\-]+\s*\)?/i);
-        if (m) {
-            let dr = m[0].trim();
-            if (!dr.startsWith('(')) dr = '(' + dr;
-            if (!dr.endsWith(')')) dr = dr + ')';
-            meta.dateRange = dr;
-            break;
+        for (const pat of drPatterns) {
+            drMatch = line.match(pat);
+            if (drMatch) break;
+        }
+        if (drMatch) break;
+    }
+    if (!drMatch) {
+        for (const pat of drPatterns) {
+            drMatch = p1FullText.match(pat);
+            if (drMatch) break;
         }
     }
 
-    // Parse start date & end date from dateRange
-    const drM = meta.dateRange.match(/(?:Từ\s+ngày|từ\s+ngày)\s*(\d{1,2})[\/\.\-](\d{1,2})(?:[\/\.\-](\d{4}))?\s*(?:đến\s+ngày|\s*-\s*|\s+đến\s*)\s*(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{4})/i);
-    if (drM) {
-        const sD = parseInt(drM[1], 10);
-        const sM = parseInt(drM[2], 10);
-        const eY = parseInt(drM[6], 10);
-        const sY = drM[3] ? parseInt(drM[3], 10) : eY;
-        meta.startDate = new Date(sY, sM - 1, sD);
+    if (drMatch) {
+        const sD = parseInt(drMatch[1], 10);
+        const sM = parseInt(drMatch[2], 10);
+        let sY = drMatch[3] ? parseInt(drMatch[3], 10) : null;
 
-        const eD = parseInt(drM[4], 10);
-        const eM = parseInt(drM[5], 10);
+        const eD = parseInt(drMatch[4], 10);
+        const eM = parseInt(drMatch[5], 10);
+        let eY = drMatch[6] ? parseInt(drMatch[6], 10) : null;
+
+        if (!eY && sY) eY = sY;
+        if (!sY && eY) sY = eY;
+        if (!sY && !eY) {
+            const yM = meta.headerDate.match(/năm\s+(\d{4})/i);
+            const curY = yM ? parseInt(yM[1], 10) : new Date().getFullYear();
+            sY = curY;
+            eY = curY;
+        }
+        if (sY < 100) sY += 2000;
+        if (eY < 100) eY += 2000;
+
+        meta.startDate = new Date(sY, sM - 1, sD);
         meta.endDate = new Date(eY, eM - 1, eD);
+
+        const sDayStr = sD.toString().padStart(2, '0');
+        const sMonthStr = sM.toString().padStart(2, '0');
+        const eDayStr = eD.toString().padStart(2, '0');
+        const eMonthStr = eM.toString().padStart(2, '0');
+
+        meta.dateRange = `(Từ ngày ${sDayStr}/${sMonthStr}/${sY} đến ngày ${eDayStr}/${eMonthStr}/${eY})`;
     }
 
     // 4. Extract Intro paragraph 1
@@ -643,7 +685,7 @@ function parseWeeklyScheduleFromRuns(allRuns, docMetadata) {
         if (currentTargetIdx >= DAY_TARGETS.length) break;
 
         const r = allRuns[idx];
-        if (r.col === 1 || r.x < 130) {
+        if (r.col === 1 || r.x < 140) {
             const textLower = r.text.trim().toLowerCase();
             const target = DAY_TARGETS[currentTargetIdx];
 
@@ -657,32 +699,32 @@ function parseWeeklyScheduleFromRuns(allRuns, docMetadata) {
             if (matched) {
                 // Look for date in column 1 in immediate next runs
                 let foundDate = "";
-                for (let scanIdx = idx; scanIdx < Math.min(allRuns.length, idx + 35); scanIdx++) {
+                for (let scanIdx = idx; scanIdx < Math.min(allRuns.length, idx + 40); scanIdx++) {
                     const sr = allRuns[scanIdx];
-                    if (sr.col === 1 || sr.x < 130) {
-                        const dateM = sr.text.match(/\b(\d{1,2}[\/\.\-]\d{1,2}(?:[\/\.\-]\d{2,4})?)\b/);
+                    if (sr.col === 1 || sr.x < 140) {
+                        const dateM = sr.text.match(/\b(\d{1,2})[\/\.\-](\d{1,2})(?:[\/\.\-](\d{2,4}))?\b/);
                         if (dateM) {
-                            foundDate = dateM[1].replace(/[\.\-]/g, '/');
+                            const dVal = parseInt(dateM[1], 10);
+                            const mVal = parseInt(dateM[2], 10);
+                            let yVal = dateM[3] ? parseInt(dateM[3], 10) : (docMetadata?.startDate ? docMetadata.startDate.getFullYear() : new Date().getFullYear());
+                            if (yVal < 100) yVal += 2000;
+                            foundDate = `${dVal.toString().padStart(2, '0')}/${mVal.toString().padStart(2, '0')}/${yVal}`;
                             break;
                         }
                     }
                     if (scanIdx > idx + 5 && sr.text.trim().startsWith("Tổ ")) break;
                 }
 
-                // If foundDate is without year (e.g. "28/9"), append year from docMetadata if available
-                if (foundDate && !/\d{4}/.test(foundDate) && docMetadata?.startDate) {
-                    foundDate = `${foundDate}/${docMetadata.startDate.getFullYear()}`;
-                }
-
-                // Fallback date from calculated start date
-                if (!foundDate && docMetadata?.startDate) {
-                    foundDate = formatCalculatedDate(docMetadata.startDate, currentTargetIdx);
+                // If Monday date was found directly in table, use it to anchor docMetadata.startDate
+                if (currentTargetIdx === 0 && foundDate && !docMetadata.startDate) {
+                    const [fD, fM, fY] = foundDate.split('/').map(Number);
+                    docMetadata.startDate = new Date(fY, fM - 1, fD);
                 }
 
                 dayIndices.push({
                     dayIndex: currentTargetIdx,
                     day: target.name,
-                    date: foundDate || (docMetadata?.startDate ? formatCalculatedDate(docMetadata.startDate, currentTargetIdx) : ""),
+                    date: foundDate,
                     startIdx: idx
                 });
 
@@ -690,6 +732,43 @@ function parseWeeklyScheduleFromRuns(allRuns, docMetadata) {
             }
         }
     }
+
+    // Two-pass anchor: If Monday date was missing but another day had date, calculate Monday
+    if (!docMetadata.startDate) {
+        for (const di of dayIndices) {
+            if (di.date) {
+                const [d, m, y] = di.date.split('/').map(Number);
+                const dayDate = new Date(y, m - 1, d);
+                docMetadata.startDate = new Date(dayDate.getTime() - di.dayIndex * 24 * 60 * 60 * 1000);
+                break;
+            }
+        }
+    }
+
+    // Ensure all 7 days have valid dates
+    dayIndices.forEach(di => {
+        if (!di.date && docMetadata.startDate) {
+            di.date = formatCalculatedDate(docMetadata.startDate, di.dayIndex);
+        }
+    });
+
+    // Auto sync docMetadata.headerDate and docMetadata.dateRange if not extracted from Page 1
+    if (dayIndices.length > 0 && dayIndices[0].date) {
+        const [mD, mM, mY] = dayIndices[0].date.split('/').map(Number);
+        const lastIdx = dayIndices.length - 1;
+        const lastDate = dayIndices[lastIdx].date || formatCalculatedDate(docMetadata.startDate, lastIdx);
+
+        if (!docMetadata.dateRange) {
+            docMetadata.dateRange = `(Từ ngày ${dayIndices[0].date} đến ngày ${lastDate})`;
+        }
+        if (!docMetadata.headerDate) {
+            docMetadata.headerDate = `Vĩnh Long, ngày ${mD.toString().padStart(2, '0')} tháng ${mM.toString().padStart(2, '0')} năm ${mY}`;
+        }
+    }
+
+    // Final safety fallbacks
+    if (!docMetadata.headerDate) docMetadata.headerDate = "Vĩnh Long, ngày 28 tháng 9 năm 2026";
+    if (!docMetadata.dateRange) docMetadata.dateRange = "(Từ ngày 28/9/2026 đến ngày 04/10/2026)";
 
     const parsedDays = [];
 

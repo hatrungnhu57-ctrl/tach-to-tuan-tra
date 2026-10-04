@@ -55,15 +55,15 @@ if (window.lucide) {
     lucide.createIcons();
 }
 
-// Print Handler (Cleans browser header/footer)
+// Print Handler (Cleans browser header/footer & Sets default file name)
 if (btnPrintPdf) {
     btnPrintPdf.addEventListener('click', () => {
         const origTitle = document.title;
-        document.title = "";
+        document.title = "KE_HOACH_CONG_TAC_TUAN_TO_TRA_VINH";
         window.print();
         setTimeout(() => {
             document.title = origTitle;
-        }, 1000);
+        }, 1500);
     });
 }
 
@@ -292,7 +292,9 @@ function joinRunsWithSpaces(lineRuns) {
         const cur = lineRuns[i];
         const gap = cur.x - (prev.x + (prev.w || 0));
 
-        if (gap > 1.5 || (!prev.text.endsWith(' ') && !cur.text.startsWith(' '))) {
+        if (prev.text.endsWith(' ') || cur.text.startsWith(' ')) {
+            res += cur.text;
+        } else if (gap >= 2.2) {
             res += ' ' + cur.text;
         } else {
             res += cur.text;
@@ -474,6 +476,28 @@ function cleanCellLines(lines) {
         l = l.replace(/\b(\d{2})\s+([A-Z]\d?)\b/g, '$1$2');
         l = l.replace(/(\d+)\s+h(\d+)/gi, '$1h$2');
         l = l.replace(/họp với/g, 'hợp với');
+
+        // Repair split words caused by PDF kerning
+        l = l.replace(/\bTu\s+ần\b/gi, 'Tuần');
+        l = l.replace(/\*\s*Tu\s+ần\b/gi, '* Tuần');
+        l = l.replace(/\bki\s+ểm\b/gi, 'kiểm');
+        l = l.replace(/\bso\s+át\b/gi, 'soát');
+        l = l.replace(/\bc\s+ơ\b/gi, 'cơ');
+        l = l.replace(/\bđ\s+ộng\b/gi, 'động');
+        l = l.replace(/\bk\s+ết\b/gi, 'kết');
+        l = l.replace(/\bh\s+ợp\b/gi, 'hợp');
+        l = l.replace(/\bt\s+ại\b/gi, 'tại');
+        l = l.replace(/\bđ\s+iểm\b/gi, 'điểm');
+        l = l.replace(/\bđ\s+ường\b/gi, 'đường');
+        l = l.replace(/\bth\s+ông\b/gi, 'thông');
+        l = l.replace(/\bph\s+ương\b/gi, 'phương');
+        l = l.replace(/\bti\s+ện\b/gi, 'tiện');
+        l = l.replace(/\bchuy\s+ên\b/gi, 'chuyên');
+        l = l.replace(/\bđ\s+ề\b/gi, 'đề');
+        l = l.replace(/\bh\s+ành\b/gi, 'hành');
+        l = l.replace(/\bvi\s+ph\s+ạm\b/gi, 'vi phạm');
+        l = l.replace(/\bđ\s+ối\b/gi, 'đối');
+        l = l.replace(/\bt\s+ượng\b/gi, 'tượng');
 
         // Apply word splitter
         l = splitGluedVietnameseWords(l);
@@ -977,7 +1001,7 @@ function renderScheduleTable() {
 function renderGeneralLinesHtml(lines) {
     if (!lines || lines.length === 0) return '';
     return lines.map(l => {
-        if (/^(\*Tuần tra|\* Tuần tra|\*Kiểm soát|\* Kiểm soát|\* PC02|\d+\.\s+Tuần tra|\d+\.\s+Kiểm soát)/i.test(l)) {
+        if (/^(\*?\s*Tuần tra|\*?\s*Kiểm soát|\*?\s*PC02|\d+\.\s*Tuần tra|\d+\.\s*Kiểm soát)/i.test(l)) {
             return `<div class="font-bold mt-1">${renderHtmlWithSuperscripts(l)}</div>`;
         }
         if (/^(- Tuyến:|- Thời gian:|- Đối tượng[^:]*:|- Hành vi[^:]*:|- Tuyên truyền[^:]*:)/i.test(l)) {

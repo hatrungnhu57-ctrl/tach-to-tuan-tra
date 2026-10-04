@@ -17,17 +17,29 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        * {
+            font-family: "Times New Roman", Times, "Tinos", "TimesNewRoman", "Liberation Serif", serif;
+        }
+
+        body {
+            font-family: "Times New Roman", Times, "Tinos", "TimesNewRoman", "Liberation Serif", serif !important;
+        }
+
+        .font-sans-ui {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        }
 
         /* STRICT TIMES NEW ROMAN ENFORCEMENT ACROSS ALL BROWSERS & DEVICES */
         .font-times,
         .font-times *,
         .doc-container,
         .doc-container *,
-        #result-section .doc-container,
-        #result-section .doc-container *,
+        #result-section,
+        #result-section *,
         #schedule-table-body,
-        #schedule-table-body * {
+        #schedule-table-body *,
+        table,
+        table * {
             font-family: "Times New Roman", Times, "Tinos", "TimesNewRoman", "Liberation Serif", "FreeSerif", serif !important;
         }
 
@@ -35,11 +47,13 @@
         @media print {
             @page {
                 size: A4 landscape;
-                margin: 8mm 6mm 8mm 6mm !important;
+                margin: 6mm 5mm 6mm 5mm !important;
             }
-            * {
+            *, *::before, *::after {
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
+                box-shadow: none !important;
+                text-shadow: none !important;
             }
             html, body {
                 background: white !important;
@@ -50,7 +64,7 @@
                 min-height: auto !important;
                 font-family: "Times New Roman", Times, "Tinos", "TimesNewRoman", serif !important;
             }
-            .no-print {
+            header, footer, .no-print, #modal-personnel, #progress-container {
                 display: none !important;
             }
             .print-only {
@@ -228,7 +242,7 @@
 
                 <!-- Table 6 Columns (With full borders) -->
                 <div class="overflow-x-auto my-4">
-                    <table class="w-full text-left border-collapse text-[12px] leading-snug border border-black">
+                    <table class="w-full text-left border-collapse text-[12px] leading-snug border border-black" style="table-layout: fixed; width: 100%;">
                         <thead>
                             <tr class="bg-slate-100">
                                 <th colspan="6" class="py-1.5 px-2 text-center font-bold text-[13px] border border-black uppercase">
@@ -236,12 +250,12 @@
                                 </th>
                             </tr>
                             <tr class="bg-slate-50 text-center font-bold text-[11px] sm:text-[12px]">
-                                <th class="py-2 px-1.5 w-[9%] border border-black">Ngày, tháng</th>
-                                <th class="py-2 px-1.5 w-[15%] border border-black">Tổ Cảnh sát<br>giao thông</th>
-                                <th class="py-2 px-1.5 w-[9%] border border-black">Lực lượng CS khác,<br>CAX được huy động</th>
-                                <th class="py-2 px-1.5 w-[24%] border border-black">Hình thức tuần tra,<br>kiểm soát</th>
-                                <th class="py-2 px-1.5 w-[19%] border border-black">Nhiệm vụ</th>
-                                <th class="py-2 px-1.5 w-[24%] border border-black">Sử dụng xe tuần tra, kiểm soát,<br>phương tiện, thiết bị kỹ thuật,<br>nghiệp vụ, vũ khí, công cụ hỗ trợ</th>
+                                <th class="py-2 px-1 border border-black text-center" style="width: 8.5%;">Ngày, tháng</th>
+                                <th class="py-2 px-1 border border-black text-center" style="width: 15%;">Tổ Cảnh sát<br>giao thông</th>
+                                <th class="py-2 px-1 border border-black text-center" style="width: 8.5%;">Lực lượng CS khác,<br>CAX được huy động</th>
+                                <th class="py-2 px-1 border border-black text-center" style="width: 24%;">Hình thức tuần tra,<br>kiểm soát</th>
+                                <th class="py-2 px-1 border border-black text-center" style="width: 19%;">Nhiệm vụ</th>
+                                <th class="py-2 px-1 border border-black text-center" style="width: 25%;">Sử dụng xe tuần tra, kiểm soát,<br>phương tiện, thiết bị kỹ thuật,<br>nghiệp vụ, vũ khí, công cụ hỗ trợ</th>
                             </tr>
                         </thead>
                         <tbody id="schedule-table-body">
@@ -351,6 +365,6 @@
     </footer>
 
     <!-- App Logic (Cache-busted) -->
-    <script src="app.js?v=2.3"></script>
+    <script src="app.js?v=3.5"></script>
 </body>
 </html>

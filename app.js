@@ -411,6 +411,68 @@ function splitGluedVietnameseWords(text) {
         [/Tuyêntruyền,điềutra,giảiquyếttainạngiaothông/gi, 'Tuyên truyền, điều tra, giải quyết tai nạn giao thông'],
         [/Tuyêntruyền,điềutra/gi, 'Tuyên truyền, điều tra'],
         [/giảiquyếttainạngiaothông/gi, 'giải quyết tai nạn giao thông'],
+        [/độngkết\s*hợp/gi, 'động kết hợp'],
+        [/độngkết/gi, 'động kết '],
+        [/kếthợpvới/gi, 'kết hợp với '],
+        [/kếthợp/gi, 'kết hợp '],
+        [/hợpvới/gi, 'hợp với '],
+        [/tạimộtđiểm/gi, 'tại một điểm '],
+        [/mộtđiểm/gi, 'một điểm '],
+        [/trênđườnggiaothông/gi, 'trên đường giao thông'],
+        [/trênđường/gi, 'trên đường '],
+        [/đườnggiaothông/gi, 'đường giao thông'],
+        [/giaothông/gi, 'giao thông'],
+        [/VĩnhLong/gi, 'Vĩnh Long'],
+        [/TràVinh/gi, 'Trà Vinh'],
+        [/NguyệtHóa/gi, 'Nguyệt Hóa'],
+        [/HoàThuận/gi, 'Hoà Thuận'],
+        [/LongĐức/gi, 'Long Đức'],
+        [/1\.Tuầntra/gi, '1. Tuần tra'],
+        [/1\.\s*Tuầntra/gi, '1. Tuần tra'],
+        [/2\.Kiểmsoát/gi, '2. Kiểm soát'],
+        [/2\.\s*Kiểmsoát/gi, '2. Kiểm soát'],
+        [/-Tuyến:QL/gi, '- Tuyến: QL'],
+        [/-Tuyến:/gi, '- Tuyến: '],
+        [/-Thời gian:/gi, '- Thời gian: '],
+        [/-Thờigian:/gi, '- Thời gian: '],
+        [/-Hành vi/gi, '- Hành vi'],
+        [/xử lýtheo/gi, 'xử lý theo'],
+        [/xửlýtheo/gi, 'xử lý theo'],
+        [/chuyên đề gồm:\s*:/gi, 'chuyên đề gồm:'],
+        [/chuyên đề gồm: :/gi, 'chuyên đề gồm:'],
+        [/Viphạmnồng độ cồn/gi, 'Vi phạm nồng độ cồn'],
+        [/\(1\)\s*Viphạm/gi, '(1) Vi phạm '],
+        [/\(1\)\s*Vi\s*phạm\s*nồng\s*độ\s*cồn\s*,\s*matúy/gi, '(1) Vi phạm nồng độ cồn, ma túy'],
+        [/,matúy/gi, ', ma túy'],
+        [/máykèotheoxekhác/gi, 'máy kéo theo xe khác'],
+        [/máykèotheo/gi, 'máy kéo theo '],
+        [/kèotheoxekhác/gi, 'kéo theo xe khác'],
+        [/,vậtkhác/gi, ', vật khác'],
+        [/\(3\)\s*Chuyênđề/gi, '(3) Chuyên đề '],
+        [/\(4\)\s*Chuyênđề/gi, '(4) Chuyên đề '],
+        [/\(5\)\s*Viphạm/gi, '(5) Vi phạm '],
+        [/\(5\)\s*Vi\s*phạm/gi, '(5) Vi phạm '],
+        [/-Phương tiện/gi, '- Phương tiện'],
+        [/-Phươngtiện/gi, '- Phương tiện'],
+        [/-Vũkhí/gi, '- Vũ khí'],
+        [/-Vũ khí,công/gi, '- Vũ khí, công'],
+        [/23\/12\/2021của/gi, '23/12/2021 của'],
+        [/-Các biểu mẫu/gi, '- Các biểu mẫu'],
+        [/-Cácbiểumẫu/gi, '- Các biểu mẫu'],
+        [/HoàngTuấn/gi, 'Hoàng Tuấn'],
+        [/VõHoàng/gi, 'Võ Hoàng'],
+        [/ThạchSô/gi, 'Thạch Sô'],
+        [/RanThi/gi, 'Ran Thi'],
+        [/ThịỬng/gi, 'Thị Ửng'],
+        [/HồngLài/gi, 'Hồng Lài'],
+        [/MinhThắng/gi, 'Minh Thắng'],
+        [/VũCường/gi, 'Vũ Cường'],
+        [/VănNhiệm/gi, 'Văn Nhiệm'],
+        [/LêDuy/gi, 'Lê Duy'],
+        [/HàPhương/gi, 'Hà Phương'],
+        [/VănViệt/gi, 'Văn Việt'],
+        [/TrungNhu/gi, 'Trung Nhu'],
+        [/ThanhTruyền/gi, 'Thanh Truyền'],
         [/theokhoản1Điều19/gi, 'theo khoản 1 Điều 19 '],
         [/Thôngtư73\/2024\/TT-BCAngày15\/11\/2024/gi, 'Thông tư 73/2024/TT-BCA ngày 15/11/2024']
     ];
@@ -498,6 +560,16 @@ function cleanCellLines(lines) {
         l = l.replace(/\bvi\s+ph\s+ạm\b/gi, 'vi phạm');
         l = l.replace(/\bđ\s+ối\b/gi, 'đối');
         l = l.replace(/\bt\s+ượng\b/gi, 'tượng');
+
+        // Fix officer spacing
+        l = l.replace(/Đ\/c\s*([A-Za-zÀ-ỹ]+)/g, 'Đ/c $1');
+        l = l.replace(/(\d{2}h\d{2})\s*-\s*(\d{2}h\d{2})/g, '$1 - $2');
+        l = l.replace(/(\d{2}h\d{2})-(\d{2}h\d{2})/g, '$1 - $2');
+
+        // Fix roles if alone
+        if (l === 'trưởng') l = 'Tổ trưởng';
+        if (l === 'viên') l = 'Tổ viên';
+        if (l === 'phó') l = 'Tổ phó';
 
         // Apply word splitter
         l = splitGluedVietnameseWords(l);
@@ -921,6 +993,7 @@ function renderScheduleTable() {
 
             // Column 2: Tên Tổ (bold), Tên cán bộ (bold), Tổ trưởng/Tổ viên (regular)
             let col2Html = s.col2Lines.map(l => {
+                l = l.replace(/\bTổ\s+(\d)\s+(\d)\b/g, 'Tổ $1$2');
                 let esc = escapeHtml(l);
                 if (/^Tổ\s+\d+/i.test(l)) {
                     return `<div class="font-bold text-[13px] mb-1">${esc}</div>`;
@@ -1002,17 +1075,27 @@ function renderScheduleTable() {
 function renderGeneralLinesHtml(lines) {
     if (!lines || lines.length === 0) return '';
     return lines.map(l => {
-        if (/^(\*?\s*Tuần tra|\*?\s*Kiểm soát|\*?\s*PC02|\d+\.\s*Tuần tra|\d+\.\s*Kiểm soát)/i.test(l)) {
+        l = l.trim();
+        if (!l) return '';
+
+        // 1. Headers: Full bold lines up to colon
+        if (/^(\*|1\.|2\.|3\.|4\.|5\.|6\.|7\.|8\.|9\.)/i.test(l) && (l.includes('Tuần tra') || l.includes('Kiểm soát') || l.includes('PC02') || l.endsWith(':') || l.startsWith('* 64') || l.startsWith('*64'))) {
             return `<div class="font-bold mt-1">${renderHtmlWithSuperscripts(l)}</div>`;
         }
-        if (/^(- Tuyến:|- Thời gian:|- Đối tượng[^:]*:|- Hành vi[^:]*:|- Tuyên truyền[^:]*:)/i.test(l)) {
-            const parts = l.split(':');
-            if (parts.length >= 2) {
-                const header = escapeHtml(parts[0]) + ': ';
-                const content = renderHtmlWithSuperscripts(parts.slice(1).join(':').trim());
-                return `<div><strong class="font-bold">${header}</strong>${content}</div>`;
-            }
+
+        // 2. Lines starting with - and having colon: In đậm từ đầu dòng đến dấu :
+        if (l.startsWith('-') && l.includes(':')) {
+            const colonIdx = l.indexOf(':');
+            const prefix = l.substring(0, colonIdx + 1);
+            const content = l.substring(colonIdx + 1).trim();
+            return `<div><strong class="font-bold">${escapeHtml(prefix)}</strong> ${renderHtmlWithSuperscripts(content)}</div>`;
         }
+
+        // 3. Special header: - Hành vi vi phạm...gồm:
+        if (/^- Hành vi vi phạm.*gồm:?$/i.test(l)) {
+            return `<div class="font-bold">${escapeHtml(l)}</div>`;
+        }
+
         return `<div>${renderHtmlWithSuperscripts(l)}</div>`;
     }).join('');
 }
@@ -1020,17 +1103,22 @@ function renderGeneralLinesHtml(lines) {
 function renderCol6LinesHtml(lines) {
     if (!lines || lines.length === 0) return '';
     return lines.map(l => {
+        l = l.trim();
+        if (!l) return '';
+
+        // 1. Vehicle header: * 64A1 - 010.62...
         if (l.startsWith('*') || /\d{2}[A-Z]\d?\s*-\s*[\d\.]+/.test(l)) {
-            return `<div class="font-bold text-slate-950">${escapeHtml(l)}</div>`;
+            return `<div class="font-bold text-slate-950 mt-1">${escapeHtml(l)}</div>`;
         }
-        if (/^(- Phương tiện, thiết bị|- Thiết bị|- Phương tiện thông tin|- Vũ khí|- Súng|- Gậy|- Các biểu mẫu|- Cân|- Máy)/i.test(l)) {
-            const parts = l.split(':');
-            if (parts.length >= 2) {
-                const header = escapeHtml(parts[0]) + ': ';
-                const content = escapeHtml(parts.slice(1).join(':').trim());
-                return `<div><strong class="font-bold">${header}</strong>${content}</div>`;
-            }
+
+        // 2. Lines starting with - and having colon: In đậm từ đầu dòng đến dấu :
+        if (l.startsWith('-') && l.includes(':')) {
+            const colonIdx = l.indexOf(':');
+            const prefix = l.substring(0, colonIdx + 1);
+            const content = l.substring(colonIdx + 1).trim();
+            return `<div><strong class="font-bold">${escapeHtml(prefix)}</strong> ${escapeHtml(content)}</div>`;
         }
+
         return `<div>${escapeHtml(l)}</div>`;
     }).join('');
 }
@@ -1391,6 +1479,7 @@ function makeDocxXmlCol2(lines, widthDxa, fontSize = 22) {
     const tcPr = makeTcPr(widthDxa, null, null, null, "top", true);
     const parasXml = lines.map(l => {
         l = l.trim();
+        l = l.replace(/\bTổ\s+(\d)\s+(\d)\b/g, 'Tổ $1$2');
         const pPr = makePPr("left", 30, 0, 240);
 
         if (/^Tổ\s+\d+/i.test(l)) {
@@ -1433,24 +1522,29 @@ function makeDocxXmlWithSuperscript(lines, widthDxa, fontSize = 20) {
 
     const tcPr = makeTcPr(widthDxa, null, null, null, "top", true);
     const parasXml = lines.map(l => {
-        let isHeaderBold = false;
-        if (/^(\*Tuần tra|\* Tuần tra|\*Kiểm soát|\* Kiểm soát|\* PC02|\d+\.\s+Tuần tra|\d+\.\s+Kiểm soát)/.test(l)) {
-            isHeaderBold = true;
+        l = l.trim();
+        const pPr = makePPr("left", 20, 0, 220);
+
+        // 1. Full bold lines: headers starting with * or 1. or 2.
+        if (/^(\*|1\.|2\.|3\.|4\.|5\.|6\.|7\.|8\.|9\.)/i.test(l) && (l.includes('Tuần tra') || l.includes('Kiểm soát') || l.includes('PC02') || l.endsWith(':') || l.startsWith('* 64') || l.startsWith('*64'))) {
+            return `<w:p>${pPr}${formatDocxChainageRuns(l, true, fontSize)}</w:p>`;
         }
 
-        const pPr = makePPr("left", 30, 0, 240);
-
-        if (anyStartsWith(l, ['- Tuyến:', '- Thời gian:'])) {
-            const parts = l.split(':');
-            if (parts.length >= 2) {
-                const p1 = parts[0] + ': ';
-                const p2 = parts.slice(1).join(':').trim();
-                const r1Pr = makeRPr("Times New Roman", true, false, fontSize);
-                return `<w:p>${pPr}<w:r>${r1Pr}<w:t xml:space="preserve">${escapeXml(p1)}</w:t></w:r>${formatDocxChainageRuns(p2, false, fontSize)}</w:p>`;
-            }
+        // 2. Lines starting with - and having colon: In đậm từ đầu dòng đến dấu :
+        if (l.startsWith('-') && l.includes(':')) {
+            const colonIdx = l.indexOf(':');
+            const prefix = l.substring(0, colonIdx + 1);
+            const content = l.substring(colonIdx + 1).trim();
+            const r1Pr = makeRPr("Times New Roman", true, false, fontSize);
+            return `<w:p>${pPr}<w:r>${r1Pr}<w:t xml:space="preserve">${escapeXml(prefix)} </w:t></w:r>${formatDocxChainageRuns(content, false, fontSize)}</w:p>`;
         }
 
-        return `<w:p>${pPr}${formatDocxChainageRuns(l, isHeaderBold, fontSize)}</w:p>`;
+        if (/^- Hành vi vi phạm.*gồm:?$/i.test(l)) {
+            const rPr = makeRPr("Times New Roman", true, false, fontSize);
+            return `<w:p>${pPr}<w:r>${rPr}<w:t>${escapeXml(l)}</w:t></w:r></w:p>`;
+        }
+
+        return `<w:p>${pPr}${formatDocxChainageRuns(l, false, fontSize)}</w:p>`;
     }).join('');
 
     return `<w:tc>${tcPr}${parasXml}</w:tc>`;
@@ -1500,25 +1594,26 @@ function makeDocxXmlCol6(lines, widthDxa, fontSize = 20) {
 
     const tcPr = makeTcPr(widthDxa, null, null, null, "top", true);
     const parasXml = lines.map(l => {
-        let isVehicleBold = false;
+        l = l.trim();
+        const pPr = makePPr("left", 20, 0, 220);
+
+        // 1. Vehicle headers: * 64A1 - ...
         if (l.startsWith('*') || /\d{2}[A-Z]\d?\s*-\s*[\d\.]+/.test(l)) {
-            isVehicleBold = true;
+            const rPr = makeRPr("Times New Roman", true, false, fontSize);
+            return `<w:p>${pPr}<w:r>${rPr}<w:t>${escapeXml(l)}</w:t></w:r></w:p>`;
         }
 
-        const pPr = makePPr("left", 30, 0, 240);
-
-        if (anyStartsWith(l, ['- Phương tiện, thiết bị', '- Thiết bị', '- Phương tiện thông tin', '- Vũ khí', '- Súng', '- Gậy', '- Các biểu mẫu', '- Cân', '- Máy'])) {
-            const parts = l.split(':');
-            if (parts.length >= 2) {
-                const p1 = parts[0] + ': ';
-                const p2 = parts.slice(1).join(':').trim();
-                const r1Pr = makeRPr("Times New Roman", true, false, fontSize);
-                const r2Pr = makeRPr("Times New Roman", false, false, fontSize);
-                return `<w:p>${pPr}<w:r>${r1Pr}<w:t xml:space="preserve">${escapeXml(p1)}</w:t></w:r><w:r>${r2Pr}<w:t>${escapeXml(p2)}</w:t></w:r></w:p>`;
-            }
+        // 2. Lines starting with - and having colon: In đậm từ đầu dòng đến dấu :
+        if (l.startsWith('-') && l.includes(':')) {
+            const colonIdx = l.indexOf(':');
+            const prefix = l.substring(0, colonIdx + 1);
+            const content = l.substring(colonIdx + 1).trim();
+            const r1Pr = makeRPr("Times New Roman", true, false, fontSize);
+            const r2Pr = makeRPr("Times New Roman", false, false, fontSize);
+            return `<w:p>${pPr}<w:r>${r1Pr}<w:t xml:space="preserve">${escapeXml(prefix)} </w:t></w:r><w:r>${r2Pr}<w:t>${escapeXml(content)}</w:t></w:r></w:p>`;
         }
 
-        const rPr = makeRPr("Times New Roman", isVehicleBold, false, fontSize);
+        const rPr = makeRPr("Times New Roman", false, false, fontSize);
         return `<w:p>${pPr}<w:r>${rPr}<w:t>${escapeXml(l)}</w:t></w:r></w:p>`;
     }).join('');
 
@@ -1534,25 +1629,29 @@ function makeDocxXmlGeneral(lines, widthDxa, fontSize = 20) {
 
     const tcPr = makeTcPr(widthDxa, null, null, null, "top", true);
     const parasXml = lines.map(l => {
-        let isBold = false;
-        if (/^(\*Tuần tra|\* Tuần tra|\*Kiểm soát|\* Kiểm soát|\* PC02|\d+\.\s+Tuần tra|\d+\.\s+Kiểm soát)/.test(l)) {
-            isBold = true;
+        l = l.trim();
+        const pPr = makePPr("left", 20, 0, 220);
+
+        if (/^(\*|1\.|2\.|3\.|4\.|5\.|6\.|7\.|8\.|9\.)/i.test(l) && (l.includes('Tuần tra') || l.includes('Kiểm soát') || l.includes('PC02') || l.endsWith(':'))) {
+            const rPr = makeRPr("Times New Roman", true, false, fontSize);
+            return `<w:p>${pPr}<w:r>${rPr}<w:t>${escapeXml(l)}</w:t></w:r></w:p>`;
         }
 
-        const pPr = makePPr("left", 30, 0, 240);
-
-        if (anyStartsWith(l, ['- Tuyến:', '- Thời gian:', '- Đối tượng', '- Hành vi', '- Tuyên truyền'])) {
-            const parts = l.split(':');
-            if (parts.length >= 2) {
-                const p1 = parts[0] + ': ';
-                const p2 = parts.slice(1).join(':').trim();
-                const r1Pr = makeRPr("Times New Roman", true, false, fontSize);
-                const r2Pr = makeRPr("Times New Roman", false, false, fontSize);
-                return `<w:p>${pPr}<w:r>${r1Pr}<w:t xml:space="preserve">${escapeXml(p1)}</w:t></w:r><w:r>${r2Pr}<w:t>${escapeXml(p2)}</w:t></w:r></w:p>`;
-            }
+        if (l.startsWith('-') && l.includes(':')) {
+            const colonIdx = l.indexOf(':');
+            const prefix = l.substring(0, colonIdx + 1);
+            const content = l.substring(colonIdx + 1).trim();
+            const r1Pr = makeRPr("Times New Roman", true, false, fontSize);
+            const r2Pr = makeRPr("Times New Roman", false, false, fontSize);
+            return `<w:p>${pPr}<w:r>${r1Pr}<w:t xml:space="preserve">${escapeXml(prefix)} </w:t></w:r><w:r>${r2Pr}<w:t>${escapeXml(content)}</w:t></w:r></w:p>`;
         }
 
-        const rPr = makeRPr("Times New Roman", isBold, false, fontSize);
+        if (/^- Hành vi vi phạm.*gồm:?$/i.test(l)) {
+            const rPr = makeRPr("Times New Roman", true, false, fontSize);
+            return `<w:p>${pPr}<w:r>${rPr}<w:t>${escapeXml(l)}</w:t></w:r></w:p>`;
+        }
+
+        const rPr = makeRPr("Times New Roman", false, false, fontSize);
         return `<w:p>${pPr}<w:r>${rPr}<w:t>${escapeXml(l)}</w:t></w:r></w:p>`;
     }).join('');
 

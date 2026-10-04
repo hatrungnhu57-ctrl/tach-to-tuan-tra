@@ -19,6 +19,7 @@ const DEFAULT_OFFICERS = [
 let officersList = JSON.parse(localStorage.getItem('tv_officers') || JSON.stringify(DEFAULT_OFFICERS));
 let currentPdfFile = null;
 let parsedSchedule = [];
+let currentDocMetadata = null;
 
 // DOM Elements
 const pdfFileInput = document.getElementById('pdf-file-input');
@@ -204,11 +205,12 @@ btnProcess.addEventListener('click', async () => {
             allRuns.push(...items);
         }
 
-        progressText.innerText = "Đang tách các ca thuộc Tổ Trà Vinh...";
+        progressText.innerText = "Đang trích xuất thông tin Kế hoạch và tách ca Tổ Trà Vinh...";
         progressBar.style.width = `85%`;
         progressPct.innerText = `85%`;
 
-        parsedSchedule = parseWeeklyScheduleFromRuns(allRuns);
+        currentDocMetadata = extractDocMetadata(allRuns);
+        parsedSchedule = parseWeeklyScheduleFromRuns(allRuns, currentDocMetadata);
 
         progressBar.style.width = `100%`;
         progressPct.innerText = `100%`;
@@ -479,27 +481,215 @@ function cleanCellLines(lines) {
     return clean;
 }
 
-function parseWeeklyScheduleFromRuns(allRuns) {
-    const daysInfo = [
-        { name: "Thứ hai", date: "28/9/2026", minP: 1 },
-        { name: "Thứ ba", date: "29/9/2026", minP: 10 },
-        { name: "Thứ tư", date: "30/9/2026", minP: 19 },
-        { name: "Thứ năm", date: "01/10/2026", minP: 29 },
-        { name: "Thứ sáu", date: "02/10/2026", minP: 39 },
-        { name: "Thứ bảy", date: "03/10/2026", minP: 50 },
-        { name: "Chủ nhật", date: "04/10/2026", minP: 60 }
-    ];
+function extractDocMetadata(allRuns) {
+    const meta = {
+        agencyDept: "PHÒNG CẢNH SÁT GIAO THÔNG",
+        agencyTeam: "ĐỘI CẢNH SÁT GIAO THÔNG ĐƯỜNG BỘ",
+        headerDate: "Vĩnh Long, ngày 28 tháng 9 năm 2026",
+        title: "KẾ HOẠCH CÔNG TÁC TUẦN",
+        dateRange: "(Từ ngày 28/9/2026 đến ngày 04/10/2026)",
+        introText: "1. Thực hiện Kế hoạch số 121/KH-PC08 ngày 22/10/2024 của Phòng PC08, Công an tỉnh Vĩnh Long về thực hiện cao điểm tổng rà soát, phát hiện, thống kê người điều khiển phương tiện mà trong cơ thể có chất ma túy; các điểm, tụ điểm phức tạp về ma túy và đấu tranh, phòng chống tội phạm về ma túy của lực lượng Cảnh sát giao thông trên địa bàn tỉnh; Kế hoạch số 2487/KH-CAT ngày 30/12/2025 của Công an tỉnh về huy động lực lượng khác trong Công an tỉnh phối hợp tuần tra, kiểm soát bảo đảm trật tự, an toàn giao thông đường bộ; Kế hoạch 22/KH-PC08 ngày 18/3/2026 của Phòng PC08 về việc tuần tra, kiểm tra, kiểm soát, xử lý các chuyên đề vi phạm là nguyên nhân chính gây tai nạn giao thông trên các tuyến giao thông đường bộ; Kế hoạch số 166/KH-PC08 ngày 09/6/2026 của Phòng PC08 về việc thực hiện cao điểm phối hợp tuyên truyền, tấn công trấn áp tội phạm về ma tuý giữa Việt Nam, Trung Quốc, Lào và Myanmar trên các tuyến giao thông của lực lượng Cảnh sát giao thông; Kế hoạch số 399/KH-CAT-PC08 ngày 25/8/2026 của Công an tỉnh về tổng kiểm soát, xử lý vi phạm về trật tự an toàn giao thông đường bộ đối với phương tiện kinh doanh vận tải trên địa bàn tỉnh; Kế hoạch số 197/KH-PC08 ngày 14/9/2026 của Phòng PC08 về việc phối hợp tuần tra, kiểm soát phòng, chống đua xe trái phép và phòng chống các loại tội phạm hoạt động theo các tuyến giao thông trên địa bàn tỉnh; Căn cứ kết quả công tác điều tra cơ bản tuyến, điều tra, giải quyết tai nạn giao thông, kết quả xử lý vi phạm giao thông, tình hình trật tự, an toàn giao thông, trật tự xã hội, vi phạm giao thông nổi lên từ ngày 21/9/2026 đến ngày 27/9/2026, Đội Cảnh sát giao thông đường bộ xây dựng kế hoạch công tác tuần như sau:",
+        section2Text: "Tùy theo tình hình thực tế giao cho chỉ huy Đội Cảnh sát giao thông đường bộ báo cáo Lãnh đạo phòng thay đổi tuyến, địa bàn, thời gian, lực lượng, phương tiện, thiết bị kỹ thuật nghiệp vụ, công cụ hỗ trợ và các điều kiện khác trong kế hoạch ngày cho phù hợp.",
+        signerDoiTruong: "Thượng tá Trần Văn Tiếp",
+        signerLanhDao: "Thượng tá Nguyễn Ngọc Ân",
+        startDate: null,
+        endDate: null
+    };
 
-    const dayIndices = [];
-    daysInfo.forEach(d => {
-        for (let idx = 0; idx < allRuns.length; idx++) {
-            const r = allRuns[idx];
-            if (r.p >= d.minP && r.col === 1 && r.text.toLowerCase().includes(d.name.toLowerCase())) {
-                dayIndices.push({ day: d.name, date: d.date, startIdx: idx });
+    if (!allRuns || allRuns.length === 0) return meta;
+
+    const p1Runs = allRuns.filter(r => r.p === 1);
+    const p1Lines = groupRunsToLines(p1Runs);
+
+    // 1. Header Date: e.g. "Vĩnh Long, ngày ... tháng ... năm ..."
+    for (const line of p1Lines) {
+        const m = line.match(/([A-ZÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬĐ][a-zàáảãạăằắẳẵặâầấẩẫậđ\s]+,\s*ngày\s+\d+\s+tháng\s+\d+\s+năm\s+\d{4})/i) ||
+                  line.match(/(ngày\s+\d+\s+tháng\s+\d+\s+năm\s+\d{4})/i);
+        if (m) {
+            meta.headerDate = m[1].trim();
+            break;
+        }
+    }
+
+    // 2. Title: "KẾ HOẠCH CÔNG TÁC TUẦN ..."
+    for (const line of p1Lines) {
+        if (/KẾ\s+HOẠCH\s+(?:CÔNG\s+TÁC\s+)?TUẦN/i.test(line)) {
+            meta.title = line.trim().toUpperCase();
+            break;
+        }
+    }
+
+    // 3. Date Range: "(Từ ngày ... đến ngày ...)"
+    for (const line of p1Lines) {
+        const m = line.match(/\(?\s*(?:Từ\s+ngày|từ\s+ngày)\s*[\d\/\.\-]+(?:\s+đến\s+ngày|\s*-\s*|\s+đến\s*)[\d\/\.\-]+\s*\)?/i);
+        if (m) {
+            let dr = m[0].trim();
+            if (!dr.startsWith('(')) dr = '(' + dr;
+            if (!dr.endsWith(')')) dr = dr + ')';
+            meta.dateRange = dr;
+            break;
+        }
+    }
+
+    // Parse start date & end date from dateRange
+    const drM = meta.dateRange.match(/(?:Từ\s+ngày|từ\s+ngày)\s*(\d{1,2})[\/\.\-](\d{1,2})(?:[\/\.\-](\d{4}))?\s*(?:đến\s+ngày|\s*-\s*|\s+đến\s*)\s*(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{4})/i);
+    if (drM) {
+        const sD = parseInt(drM[1], 10);
+        const sM = parseInt(drM[2], 10);
+        const eY = parseInt(drM[6], 10);
+        const sY = drM[3] ? parseInt(drM[3], 10) : eY;
+        meta.startDate = new Date(sY, sM - 1, sD);
+
+        const eD = parseInt(drM[4], 10);
+        const eM = parseInt(drM[5], 10);
+        meta.endDate = new Date(eY, eM - 1, eD);
+    }
+
+    // 4. Extract Intro paragraph 1
+    const introArr = [];
+    let isIntro = false;
+    for (const line of p1Lines) {
+        if (/^1\.\s*Thực\s*hiện/i.test(line)) {
+            isIntro = true;
+        }
+        if (isIntro) {
+            introArr.push(line);
+            if (/như\s*sau\s*:?/i.test(line)) {
+                isIntro = false;
                 break;
             }
         }
-    });
+    }
+    if (introArr.length > 0) {
+        meta.introText = introArr.join(' ');
+    }
+
+    // 5. Signatures and Section 2 from the end of the document
+    const maxPage = Math.max(1, ...allRuns.map(r => r.p));
+    const endRuns = allRuns.filter(r => r.p >= Math.max(1, maxPage - 1));
+    const endLines = groupRunsToLines(endRuns);
+
+    let sec2Arr = [];
+    let isSec2 = false;
+    for (const line of endLines) {
+        if (/^2\.\s*Thực\s*hiện\s*yêu\s*cầu/i.test(line)) {
+            isSec2 = true;
+            continue;
+        }
+        if (isSec2) {
+            if (/Nơi\s*nhận|ĐỘI\s*TRƯỞNG|TRƯỞNG\s*PHÒNG/i.test(line)) {
+                isSec2 = false;
+                break;
+            }
+            sec2Arr.push(line);
+        }
+    }
+    if (sec2Arr.length > 0) {
+        meta.section2Text = sec2Arr.join(' ');
+    }
+
+    // Extract Signer names
+    for (let i = 0; i < endLines.length; i++) {
+        const line = endLines[i].trim();
+        if (/^ĐỘI\s*TRƯỞNG$/i.test(line) && i + 1 < endLines.length) {
+            const nextL = endLines[i + 1].trim();
+            if (nextL && !/TRƯỞNG|PHÒNG|Nơi|Lưu/i.test(nextL)) {
+                meta.signerDoiTruong = nextL;
+            }
+        }
+        if (/(?:KT\.\s*TRƯỞNG\s*PHÒNG|PHÓ\s*TRƯỞNG\s*PHÒNG)/i.test(line) && i + 1 < endLines.length) {
+            for (let j = i + 1; j < Math.min(endLines.length, i + 4); j++) {
+                const candidate = endLines[j].trim();
+                if (candidate && !/KT\.|TRƯỞNG|PHÒNG|ĐỘI|Nơi|Lưu/i.test(candidate)) {
+                    meta.signerLanhDao = candidate;
+                    break;
+                }
+            }
+        }
+    }
+
+    return meta;
+}
+
+function formatVietnameseDate(d) {
+    if (!d || isNaN(d.getTime())) return "";
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+}
+
+function formatCalculatedDate(baseDate, dayOffset) {
+    if (!baseDate || isNaN(baseDate.getTime())) return "";
+    const d = new Date(baseDate.getTime() + dayOffset * 24 * 60 * 60 * 1000);
+    return formatVietnameseDate(d);
+}
+
+function parseWeeklyScheduleFromRuns(allRuns, docMetadata) {
+    const DAY_TARGETS = [
+        { name: "Thứ hai", aliases: ["thứ hai", "thứ 2"] },
+        { name: "Thứ ba",  aliases: ["thứ ba", "thứ 3"] },
+        { name: "Thứ tư",  aliases: ["thứ tư", "thứ 4"] },
+        { name: "Thứ năm", aliases: ["thứ năm", "thứ 5"] },
+        { name: "Thứ sáu", aliases: ["thứ sáu", "thứ 6"] },
+        { name: "Thứ bảy", aliases: ["thứ bảy", "thứ 7"] },
+        { name: "Chủ nhật",aliases: ["chủ nhật", "chủ nhật:", "cn"] }
+    ];
+
+    const dayIndices = [];
+    let currentTargetIdx = 0;
+
+    for (let idx = 0; idx < allRuns.length; idx++) {
+        if (currentTargetIdx >= DAY_TARGETS.length) break;
+
+        const r = allRuns[idx];
+        if (r.col === 1 || r.x < 130) {
+            const textLower = r.text.trim().toLowerCase();
+            const target = DAY_TARGETS[currentTargetIdx];
+
+            const matched = target.aliases.some(alias => {
+                if (textLower === alias) return true;
+                if (textLower.startsWith(alias + ' ') || textLower.startsWith(alias + '\n') || textLower.startsWith(alias + ':')) return true;
+                if (textLower.includes(alias)) return true;
+                return false;
+            });
+
+            if (matched) {
+                // Look for date in column 1 in immediate next runs
+                let foundDate = "";
+                for (let scanIdx = idx; scanIdx < Math.min(allRuns.length, idx + 35); scanIdx++) {
+                    const sr = allRuns[scanIdx];
+                    if (sr.col === 1 || sr.x < 130) {
+                        const dateM = sr.text.match(/\b(\d{1,2}[\/\.\-]\d{1,2}(?:[\/\.\-]\d{2,4})?)\b/);
+                        if (dateM) {
+                            foundDate = dateM[1].replace(/[\.\-]/g, '/');
+                            break;
+                        }
+                    }
+                    if (scanIdx > idx + 5 && sr.text.trim().startsWith("Tổ ")) break;
+                }
+
+                // If foundDate is without year (e.g. "28/9"), append year from docMetadata if available
+                if (foundDate && !/\d{4}/.test(foundDate) && docMetadata?.startDate) {
+                    foundDate = `${foundDate}/${docMetadata.startDate.getFullYear()}`;
+                }
+
+                // Fallback date from calculated start date
+                if (!foundDate && docMetadata?.startDate) {
+                    foundDate = formatCalculatedDate(docMetadata.startDate, currentTargetIdx);
+                }
+
+                dayIndices.push({
+                    dayIndex: currentTargetIdx,
+                    day: target.name,
+                    date: foundDate || (docMetadata?.startDate ? formatCalculatedDate(docMetadata.startDate, currentTargetIdx) : ""),
+                    startIdx: idx
+                });
+
+                currentTargetIdx++;
+            }
+        }
+    }
 
     const parsedDays = [];
 
@@ -671,6 +861,35 @@ function renderScheduleTable() {
 
     statTotalShiftsBadge.innerText = `Đã tách ${totalShifts} ca Tổ Trà Vinh`;
     statDaysBadge.innerText = `Đủ 7 ngày từ Thứ Hai đến Chủ Nhật`;
+
+    if (currentDocMetadata) {
+        const elAgencyDept = document.getElementById('doc-agency-dept');
+        if (elAgencyDept && currentDocMetadata.agencyDept) elAgencyDept.innerText = currentDocMetadata.agencyDept;
+
+        const elAgencyTeam = document.getElementById('doc-agency-team');
+        if (elAgencyTeam && currentDocMetadata.agencyTeam) elAgencyTeam.innerText = currentDocMetadata.agencyTeam;
+
+        const elHeaderDate = document.getElementById('doc-header-date');
+        if (elHeaderDate && currentDocMetadata.headerDate) elHeaderDate.innerText = currentDocMetadata.headerDate;
+
+        const elTitle = document.getElementById('doc-title');
+        if (elTitle && currentDocMetadata.title) elTitle.innerText = currentDocMetadata.title;
+
+        const elDateRange = document.getElementById('doc-date-range');
+        if (elDateRange && currentDocMetadata.dateRange) elDateRange.innerText = currentDocMetadata.dateRange;
+
+        const elIntro = document.getElementById('doc-intro-text');
+        if (elIntro && currentDocMetadata.introText) elIntro.innerText = currentDocMetadata.introText;
+
+        const elSec2 = document.getElementById('doc-section2-text');
+        if (elSec2 && currentDocMetadata.section2Text) elSec2.innerText = currentDocMetadata.section2Text;
+
+        const elSignerDT = document.getElementById('doc-signer-doitruong');
+        if (elSignerDT && currentDocMetadata.signerDoiTruong) elSignerDT.innerText = currentDocMetadata.signerDoiTruong;
+
+        const elSignerLD = document.getElementById('doc-signer-lanhdao');
+        if (elSignerLD && currentDocMetadata.signerLanhDao) elSignerLD.innerText = currentDocMetadata.signerLanhDao;
+    }
 }
 
 function renderGeneralLinesHtml(lines) {
@@ -885,6 +1104,17 @@ btnExportDocx.addEventListener('click', async () => {
             });
         });
 
+        // Extract dynamic metadata or use fallback
+        const agencyDept = currentDocMetadata?.agencyDept || "PHÒNG CẢNH SÁT GIAO THÔNG";
+        const agencyTeam = currentDocMetadata?.agencyTeam || "ĐỘI CẢNH SÁT GIAO THÔNG ĐƯỜNG BỘ";
+        const headerDate = currentDocMetadata?.headerDate || "Vĩnh Long, ngày 28 tháng 9 năm 2026";
+        const docTitle = currentDocMetadata?.title || "KẾ HOẠCH CÔNG TÁC TUẦN";
+        const dateRange = currentDocMetadata?.dateRange || "(Từ ngày 28/9/2026 đến ngày 04/10/2026)";
+        const introText = currentDocMetadata?.introText || "1. Thực hiện Kế hoạch số 121/KH-PC08 ngày 22/10/2024 của Phòng PC08, Công an tỉnh Vĩnh Long về thực hiện cao điểm tổng rà soát, phát hiện, thống kê người điều khiển phương tiện mà trong cơ thể có chất ma túy; các điểm, tụ điểm phức tạp về ma túy và đấu tranh, phòng chống tội phạm về ma túy của lực lượng Cảnh sát giao thông trên địa bàn tỉnh; Kế hoạch số 2487/KH-CAT ngày 30/12/2025 của Công an tỉnh về huy động lực lượng khác trong Công an tỉnh phối hợp tuần tra, kiểm soát bảo đảm trật tự, an toàn giao thông đường bộ; Kế hoạch 22/KH-PC08 ngày 18/3/2026 của Phòng PC08 về việc tuần tra, kiểm tra, kiểm soát, xử lý các chuyên đề vi phạm là nguyên nhân chính gây tai nạn giao thông trên các tuyến giao thông đường bộ; Kế hoạch số 166/KH-PC08 ngày 09/6/2026 của Phòng PC08 về việc thực hiện cao điểm phối hợp tuyên truyền, tấn công trấn áp tội phạm về ma tuý giữa Việt Nam, Trung Quốc, Lào và Myanmar trên các tuyến giao thông của lực lượng Cảnh sát giao thông; Kế hoạch số 399/KH-CAT-PC08 ngày 25/8/2026 của Công an tỉnh về tổng kiểm soát, xử lý vi phạm về trật tự an toàn giao thông đường bộ đối với phương tiện kinh doanh vận tải trên địa bàn tỉnh; Kế hoạch số 197/KH-PC08 ngày 14/9/2026 của Phòng PC08 về việc phối hợp tuần tra, kiểm soát phòng, chống đua xe trái phép và phòng chống các loại tội phạm hoạt động theo các tuyến giao thông trên địa bàn tỉnh; Căn cứ kết quả công tác điều tra cơ bản tuyến, điều tra, giải quyết tai nạn giao thông, kết quả xử lý vi phạm giao thông, tình hình trật tự, an toàn giao thông, trật tự xã hội, vi phạm giao thông nổi lên từ ngày 21/9/2026 đến ngày 27/9/2026, Đội Cảnh sát giao thông đường bộ xây dựng kế hoạch công tác tuần như sau:";
+        const sec2Text = currentDocMetadata?.section2Text || "Tùy theo tình hình thực tế giao cho chỉ huy Đội Cảnh sát giao thông đường bộ báo cáo Lãnh đạo phòng thay đổi tuyến, địa bàn, thời gian, lực lượng, phương tiện, thiết bị kỹ thuật nghiệp vụ, công cụ hỗ trợ và các điều kiện khác trong kế hoạch ngày cho phù hợp.";
+        const signerDT = currentDocMetadata?.signerDoiTruong || "Thượng tá Trần Văn Tiếp";
+        const signerLD = currentDocMetadata?.signerLanhDao || "Thượng tá Nguyễn Ngọc Ân";
+
         // 6. word/document.xml (Completely free of raw \n in <w:t>)
         const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
@@ -910,29 +1140,28 @@ btnExportDocx.addEventListener('click', async () => {
         <w:tr>
             <w:tc>
                 <w:tcPr><w:tcW w:w="7000" w:type="dxa"/></w:tcPr>
-                <w:p>${makePPr("center", 40, 0, 240)}<w:r>${makeRPr("Times New Roman", false, false, 24)}<w:t>PHÒNG CẢNH SÁT GIAO THÔNG</w:t></w:r></w:p>
-                <w:p>${makePPr("center", 20, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>ĐỘI CẢNH SÁT GIAO THÔNG</w:t></w:r></w:p>
-                <w:p>${makePPr("center", 40, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>ĐƯỜNG BỘ</w:t></w:r></w:p>
+                <w:p>${makePPr("center", 40, 0, 240)}<w:r>${makeRPr("Times New Roman", false, false, 24)}<w:t>${escapeXml(agencyDept)}</w:t></w:r></w:p>
+                <w:p>${makePPr("center", 20, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>${escapeXml(agencyTeam)}</w:t></w:r></w:p>
             </w:tc>
             <w:tc>
                 <w:tcPr><w:tcW w:w="8000" w:type="dxa"/></w:tcPr>
                 <w:p>${makePPr("center", 40, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</w:t></w:r></w:p>
                 <w:p>${makePPr("center", 60, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>Độc lập - Tự do - Hạnh phúc</w:t></w:r></w:p>
-                <w:p>${makePPr("center", 40, 0, 240)}<w:r>${makeRPr("Times New Roman", false, true, 22)}<w:t>Vĩnh Long, ngày 28 tháng 9 năm 2026</w:t></w:r></w:p>
+                <w:p>${makePPr("center", 40, 0, 240)}<w:r>${makeRPr("Times New Roman", false, true, 22)}<w:t>${escapeXml(headerDate)}</w:t></w:r></w:p>
             </w:tc>
         </w:tr>
     </w:tbl>
     <w:p>
         ${makePPr("center", 40, 150, 240)}
-        <w:r>${makeRPr("Times New Roman", true, false, 30)}<w:t>KẾ HOẠCH CÔNG TÁC TUẦN</w:t></w:r>
+        <w:r>${makeRPr("Times New Roman", true, false, 30)}<w:t>${escapeXml(docTitle)}</w:t></w:r>
     </w:p>
     <w:p>
         ${makePPr("center", 150, 0, 240)}
-        <w:r>${makeRPr("Times New Roman", true, true, 24)}<w:t>(Từ ngày 28/9/2026 đến ngày 04/10/2026)</w:t></w:r>
+        <w:r>${makeRPr("Times New Roman", true, true, 24)}<w:t>${escapeXml(dateRange)}</w:t></w:r>
     </w:p>
     <w:p>
         ${makePPr("both", 150, 0, 260)}
-        <w:r>${makeRPr("Times New Roman", false, false, 22)}<w:t>1. Thực hiện Kế hoạch số 121/KH-PC08 ngày 22/10/2024 của Phòng PC08, Công an tỉnh Vĩnh Long về thực hiện cao điểm tổng rà soát, phát hiện, thống kê người điều khiển phương tiện mà trong cơ thể có chất ma túy; các điểm, tụ điểm phức tạp về ma túy và đấu tranh, phòng chống tội phạm về ma túy của lực lượng Cảnh sát giao thông trên địa bàn tỉnh; Kế hoạch số 2487/KH-CAT ngày 30/12/2025 của Công an tỉnh về huy động lực lượng khác trong Công an tỉnh phối hợp tuần tra, kiểm soát bảo đảm trật tự, an toàn giao thông đường bộ; Kế hoạch 22/KH-PC08 ngày 18/3/2026 của Phòng PC08 về việc tuần tra, kiểm tra, kiểm soát, xử lý các chuyên đề vi phạm là nguyên nhân chính gây tai nạn giao thông trên các tuyến giao thông đường bộ; Kế hoạch số 166/KH-PC08 ngày 09/6/2026 của Phòng PC08 về việc thực hiện cao điểm phối hợp tuyên truyền, tấn công trấn áp tội phạm về ma tuý giữa Việt Nam, Trung Quốc, Lào và Myanmar trên các tuyến giao thông của lực lượng Cảnh sát giao thông; Kế hoạch số 399/KH-CAT-PC08 ngày 25/8/2026 của Công an tỉnh về tổng kiểm soát, xử lý vi phạm về trật tự an toàn giao thông đường bộ đối với phương tiện kinh doanh vận tải trên địa bàn tỉnh; Kế hoạch số 197/KH-PC08 ngày 14/9/2026 của Phòng PC08 về việc phối hợp tuần tra, kiểm soát phòng, chống đua xe trái phép và phòng chống các loại tội phạm hoạt động theo các tuyến giao thông trên địa bàn tỉnh; Căn cứ kết quả công tác điều tra cơ bản tuyến, điều tra, giải quyết tai nạn giao thông, kết quả xử lý vi phạm giao thông, tình hình trật tự, an toàn giao thông, trật tự xã hội, vi phạm giao thông nổi lên từ ngày 21/9/2026 đến ngày 27/9/2026, Đội Cảnh sát giao thông đường bộ xây dựng kế hoạch công tác tuần như sau:</w:t></w:r>
+        <w:r>${makeRPr("Times New Roman", false, false, 22)}<w:t>${escapeXml(introText)}</w:t></w:r>
     </w:p>
     <w:tbl>
         <w:tblPr>
@@ -963,7 +1192,7 @@ btnExportDocx.addEventListener('click', async () => {
     </w:p>
     <w:p>
         ${makePPr("left", 150, 0, 240)}
-        <w:r>${makeRPr("Times New Roman", false, false, 22)}<w:t>Tùy theo tình hình thực tế giao cho chỉ huy Đội Cảnh sát giao thông đường bộ báo cáo Lãnh đạo phòng thay đổi tuyến, địa bàn, thời gian, lực lượng, phương tiện, thiết bị kỹ thuật nghiệp vụ, công cụ hỗ trợ và các điều kiện khác trong kế hoạch ngày cho phù hợp.</w:t></w:r>
+        <w:r>${makeRPr("Times New Roman", false, false, 22)}<w:t>${escapeXml(sec2Text)}</w:t></w:r>
     </w:p>
     <w:tbl>
         <w:tblPr>
@@ -990,13 +1219,13 @@ btnExportDocx.addEventListener('click', async () => {
             <w:tc>
                 <w:tcPr><w:tcW w:w="5000" w:type="dxa"/></w:tcPr>
                 <w:p>${makePPr("center", 800, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>ĐỘI TRƯỞNG</w:t></w:r></w:p>
-                <w:p>${makePPr("center", 0, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>Thượng tá Trần Văn Tiếp</w:t></w:r></w:p>
+                <w:p>${makePPr("center", 0, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>${escapeXml(signerDT)}</w:t></w:r></w:p>
             </w:tc>
             <w:tc>
                 <w:tcPr><w:tcW w:w="5000" w:type="dxa"/></w:tcPr>
                 <w:p>${makePPr("center", 20, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>KT. TRƯỞNG PHÒNG</w:t></w:r></w:p>
                 <w:p>${makePPr("center", 800, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>PHÓ TRƯỞNG PHÒNG</w:t></w:r></w:p>
-                <w:p>${makePPr("center", 0, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>Thượng tá Nguyễn Ngọc Ân</w:t></w:r></w:p>
+                <w:p>${makePPr("center", 0, 0, 240)}<w:r>${makeRPr("Times New Roman", true, false, 24)}<w:t>${escapeXml(signerLD)}</w:t></w:r></w:p>
             </w:tc>
         </w:tr>
     </w:tbl>

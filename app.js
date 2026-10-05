@@ -55,11 +55,51 @@ if (window.lucide) {
     lucide.createIcons();
 }
 
+// Week Number and Export Filename Helpers
+function getWeekNumber(date) {
+    if (!date || isNaN(date.getTime())) date = new Date();
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+function getWeekNumberFromDoc(docMetadata, allRuns) {
+    // 1. Check title e.g. "KẾ HOẠCH CÔNG TÁC TUẦN 41" or "TUẦN 41"
+    if (docMetadata && docMetadata.title) {
+        const m = docMetadata.title.match(/TUẦN(?:\s+THỨ|\s+SỐ)?\s*(\d+)/i);
+        if (m) return parseInt(m[1], 10);
+    }
+
+    // 2. Check all runs on page 1
+    if (allRuns && allRuns.length > 0) {
+        const p1Text = allRuns.filter(r => r.p === 1).map(r => r.text).join(' ');
+        const m = p1Text.match(/TUẦN(?:\s+THỨ|\s+SỐ)?\s*(\d+)/i);
+        if (m) return parseInt(m[1], 10);
+    }
+
+    // 3. Calculate ISO week from startDate if available
+    if (docMetadata && docMetadata.startDate) {
+        return getWeekNumber(docMetadata.startDate);
+    }
+
+    // 4. Default to current date ISO week
+    return getWeekNumber(new Date());
+}
+
+function getExportFileName() {
+    const weekNum = (currentDocMetadata && currentDocMetadata.weekNum)
+        ? currentDocMetadata.weekNum
+        : getWeekNumberFromDoc(currentDocMetadata, window._lastAllRuns || []);
+    return `KH TTKS TỔ TPTV-${weekNum}`;
+}
+
 // Print Handler (Cleans browser header/footer & Sets default file name)
 if (btnPrintPdf) {
     btnPrintPdf.addEventListener('click', () => {
         const origTitle = document.title;
-        document.title = "KE_HOACH_CONG_TAC_TUAN_TO_TRA_VINH";
+        document.title = getExportFileName();
         window.print();
         setTimeout(() => {
             document.title = origTitle;
@@ -255,7 +295,9 @@ btnProcess.addEventListener('click', async () => {
         progressBar.style.width = `85%`;
         progressPct.innerText = `85%`;
 
+        window._lastAllRuns = allRuns;
         currentDocMetadata = extractDocMetadata(allRuns);
+        currentDocMetadata.weekNum = getWeekNumberFromDoc(currentDocMetadata, allRuns);
         parsedSchedule = parseWeeklyScheduleFromRuns(allRuns, currentDocMetadata);
 
         progressBar.style.width = `100%`;
@@ -697,14 +739,14 @@ function extractDocMetadata(allRuns) {
 
     // 2. Title: "KẾ HOẠCH CÔNG TÁC TUẦN ..."
     for (const line of p1Lines) {
-        const m = line.match(/(KẾ\s+HOẠCH\s+(?:CÔNG\s+TÁC\s+)?TUẦN(?:\s+\d+)?)/i);
+        const m = line.match(/(KẾ\s+HOẠCH\s+(?:CÔNG\s+TÁC\s+)?TUẦN(?:\s+THỨ|\s+SỐ)?(?:\s+\d+)?)/i);
         if (m) {
             meta.title = m[1].trim().toUpperCase();
             break;
         }
     }
     if (meta.title === "KẾ HOẠCH CÔNG TÁC TUẦN") {
-        const m = p1FullText.match(/(KẾ\s+HOẠCH\s+(?:CÔNG\s+TÁC\s+)?TUẦN(?:\s+\d+)?)/i);
+        const m = p1FullText.match(/(KẾ\s+HOẠCH\s+(?:CÔNG\s+TÁC\s+)?TUẦN(?:\s+THỨ|\s+SỐ)?(?:\s+\d+)?)/i);
         if (m) meta.title = m[1].trim().toUpperCase();
     }
 
@@ -1012,6 +1054,26 @@ function parseWeeklyScheduleFromRuns(allRuns, docMetadata) {
                 });
             }
         }
+
+        // Renumber shifts for this day sequentially: Tổ 1, Tổ 2, ...
+        tvTos.forEach((tItem, shiftIdx) => {
+            const shiftNum = shiftIdx + 1;
+            const newToName = `Tổ ${shiftNum}`;
+            tItem.toName = newToName;
+
+            let foundToHeader = false;
+            for (let lIdx = 0; lIdx < tItem.col2Lines.length; lIdx++) {
+                const l = tItem.col2Lines[lIdx].trim();
+                if (/^Tổ\s*\d+/i.test(l) || /^Tổ$/i.test(l)) {
+                    tItem.col2Lines[lIdx] = newToName;
+                    foundToHeader = true;
+                    break;
+                }
+            }
+            if (!foundToHeader) {
+                tItem.col2Lines.unshift(newToName);
+            }
+        });
 
         parsedDays.push({
             day: dInfo.day,
@@ -1481,9 +1543,10 @@ btnExportDocx.addEventListener('click', async () => {
 
         const blob = await zip.generateAsync({ type: 'blob' });
         const url = URL.createObjectURL(blob);
+        const exportFileName = getExportFileName();
         const a = document.createElement('a');
         a.href = url;
-        a.download = `KE_HOACH_CONG_TAC_TUAN_TO_TRA_VINH.docx`;
+        a.download = `${exportFileName}.docx`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

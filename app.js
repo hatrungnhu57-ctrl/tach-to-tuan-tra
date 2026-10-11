@@ -1000,7 +1000,12 @@ function parseWeeklyScheduleFromRuns(allRuns, docMetadata) {
 
             const m = t.match(/^Tổ\s*(\d+)(?:\s+(\d+))?/i);
             if (m) {
-                const toNum = m[2] ? (m[1] + m[2]) : m[1];
+                let toNum = m[2] ? (m[1] + m[2]) : m[1];
+                if (!m[2] && j + 1 < dayRuns.length && /^\d+$/.test(dayRuns[j+1].text.trim())) {
+                    if (Math.abs(dayRuns[j+1].y - r.y) < 4) {
+                        toNum = m[1] + dayRuns[j+1].text.trim();
+                    }
+                }
                 toStarts.push({ idx: j, name: `Tổ ${toNum}` });
             } else if (t.toLowerCase() === 'tổ' && j + 1 < dayRuns.length && /^\d+$/.test(dayRuns[j+1].text.trim())) {
                 toStarts.push({ idx: j, name: `Tổ ${dayRuns[j+1].text.trim()}` });
@@ -1067,6 +1072,9 @@ function parseWeeklyScheduleFromRuns(allRuns, docMetadata) {
                 if (/^Tổ\s*\d+/i.test(l) || /^Tổ$/i.test(l)) {
                     tItem.col2Lines[lIdx] = newToName;
                     foundToHeader = true;
+                    if (lIdx + 1 < tItem.col2Lines.length && /^\d+$/.test(tItem.col2Lines[lIdx + 1].trim())) {
+                        tItem.col2Lines.splice(lIdx + 1, 1);
+                    }
                     break;
                 }
             }

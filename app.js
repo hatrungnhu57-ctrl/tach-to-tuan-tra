@@ -378,14 +378,18 @@ function joinRunsWithSpaces(lineRuns) {
     for (let i = 1; i < lineRuns.length; i++) {
         const prev = lineRuns[i - 1];
         const cur = lineRuns[i];
-        const gap = cur.x - (prev.x + (prev.w || 0));
+        const prevText = prev.text || '';
+        const curText = cur.text || '';
+        const prevEnd = prev.x + (prev.w || 0);
+        const gap = cur.x - prevEnd;
+        const isPrevPrefix = /(?:Đ\/c|đ\/c|\d+\.)$/i.test(prevText.trim());
 
-        if (prev.text.endsWith(' ') || cur.text.startsWith(' ')) {
-            res += cur.text;
-        } else if (gap >= 2.2) {
-            res += ' ' + cur.text;
+        if (prevText.endsWith(' ') || curText.startsWith(' ')) {
+            res += curText;
+        } else if (gap >= 0.5 || isPrevPrefix) {
+            res += ' ' + curText;
         } else {
-            res += cur.text;
+            res += curText;
         }
     }
     return res;
@@ -468,6 +472,7 @@ function splitGluedVietnameseWords(text) {
         [/Tuầntra,kiểmsoátcơđộng/gi, 'Tuần tra, kiểm soát cơ động'],
         [/Tuầntra,kiểmsoát/gi, 'Tuần tra, kiểm soát '],
         [/kiểmsoátcơđộng/gi, 'kiểm soát cơ động'],
+        [/cơđộng/gi, 'cơ động'],
         [/Kiểmsoáttại01điểm/gi, 'Kiểm soát tại 01 điểm '],
         [/Kiểmsoáttạimộtđiểm/gi, 'Kiểm soát tại một điểm '],
         [/trênđườnggiaothông/gi, 'trên đường giao thông'],
@@ -585,8 +590,8 @@ function cleanCellLines(lines) {
     raw = raw.replace(/:\s*\+\d+/g, ':');
 
     // Fix and unify all combined headings FIRST (including all variants with colons, newlines, duplicate bullets)
-    raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*cơ\s*động:?\s*(?:\r?\n|\s)*(?:kết\s*hợp\s*với|hợp\s*với):?\s*(?:\r?\n|\s)*\*?\s*Kiểm\s*soát\s*tại\s*một\s*điểm\s*(?:\r?\n|\s)*trên\s*đường\s*giao\s*thông:?/gi, '* Tuần tra, kiểm soát cơ động kết hợp với kiểm soát tại một điểm trên đường giao thông:');
-    raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*cơ\s*động:?\s*(?:\r?\n|\s)*(?:kết\s*hợp\s*với|hợp\s*với):?\s*(?:\r?\n|\s)*\*?\s*kiểm\s*soát\s*tại\s*một\s*điểm\s*(?:\r?\n|\s)*trên\s*đường\s*giao\s*thông:?/gi, '* Tuần tra, kiểm soát cơ động kết hợp với kiểm soát tại một điểm trên đường giao thông:');
+    const combPattern = /(?:\*|\b1\.)?\s*Tuần\s*tra,\s*kiểm\s*soát\s*cơ\s*động:?\s*(?:\r?\n|\s)*(?:kết\s*hợp\s*với|hợp\s*với):?\s*(?:\r?\n|\s)*(?:\*|\b2\.)?\s*[Kk]iểm\s*soát\s*tại\s*(?:một|01)\s*điểm\s*(?:\r?\n|\s)*trên\s*đường\s*giao\s*thông:?/gi;
+    raw = raw.replace(combPattern, '* Tuần tra, kiểm soát cơ động kết hợp với kiểm soát tại một điểm trên đường giao thông:');
 
     raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*công\s*khai:?\s*(?:\r?\n|\s)*(?:kết\s*hợp\s*với|hợp\s*với):?\s*(?:\r?\n|\s)*\*?\s*(?:hoá|hóa)\s*trang:?/gi, '* Tuần tra, kiểm soát công khai kết hợp với hoá trang:');
 
@@ -595,8 +600,7 @@ function cleanCellLines(lines) {
     raw = raw.replace(/([^\n])\s*(-\s*Tuyến:|-\s*Thời gian:|-\s*Đối tượng:|-\s*Nhiệm vụ:)/gi, '$1\n$2');
 
     // Re-verify combined heading after line separation
-    raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*cơ\s*động:?\s*(?:\r?\n|\s)*(?:kết\s*hợp\s*với|hợp\s*với):?\s*(?:\r?\n|\s)*\*?\s*Kiểm\s*soát\s*tại\s*một\s*điểm\s*(?:\r?\n|\s)*trên\s*đường\s*giao\s*thông:?/gi, '* Tuần tra, kiểm soát cơ động kết hợp với kiểm soát tại một điểm trên đường giao thông:');
-    raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*cơ\s*động:?\s*(?:\r?\n|\s)*(?:kết\s*hợp\s*với|hợp\s*với):?\s*(?:\r?\n|\s)*\*?\s*kiểm\s*soát\s*tại\s*một\s*điểm\s*(?:\r?\n|\s)*trên\s*đường\s*giao\s*thông:?/gi, '* Tuần tra, kiểm soát cơ động kết hợp với kiểm soát tại một điểm trên đường giao thông:');
+    raw = raw.replace(combPattern, '* Tuần tra, kiểm soát cơ động kết hợp với kiểm soát tại một điểm trên đường giao thông:');
     raw = raw.replace(/\*?\s*Tuần\s*tra,\s*kiểm\s*soát\s*công\s*khai:?\s*(?:\r?\n|\s)*(?:kết\s*hợp\s*với|hợp\s*với):?\s*(?:\r?\n|\s)*\*?\s*(?:hoá|hóa)\s*trang:?/gi, '* Tuần tra, kiểm soát công khai kết hợp với hoá trang:');
 
     // 2. Standardize Route 1 (Trà Vinh cũ): QL53 (Km 43+108 -> 166+858), QL53B, QL54 (82+700 -> 148+200), QL60 (11+308 -> 101+226)
@@ -756,17 +760,28 @@ function extractDocMetadata(allRuns) {
         /\((\d{1,2})[\/\.\-](\d{1,2})(?:[\/\.\-](\d{2,4}))?\s*(?:đến|-|–)\s*(\d{1,2})[\/\.\-](\d{1,2})(?:[\/\.\-](\d{2,4}))?\)/i
     ];
 
+    const normalizeDateStr = (str) => {
+        if (!str) return '';
+        return str
+            .replace(/(\d)\s+(\d)/g, '$1$2')
+            .replace(/(\d)\s+([\/\.\-])/g, '$1$2')
+            .replace(/([\/\.\-])\s+(\d)/g, '$1$2')
+            .replace(/\s*([\/\.\-])\s*/g, '$1');
+    };
+
     let drMatch = null;
     for (const line of p1Lines) {
+        const normLine = normalizeDateStr(line);
         for (const pat of drPatterns) {
-            drMatch = line.match(pat);
+            drMatch = normLine.match(pat) || line.match(pat);
             if (drMatch) break;
         }
         if (drMatch) break;
     }
     if (!drMatch) {
+        const normP1 = normalizeDateStr(p1FullText);
         for (const pat of drPatterns) {
-            drMatch = p1FullText.match(pat);
+            drMatch = normP1.match(pat) || p1FullText.match(pat);
             if (drMatch) break;
         }
     }
@@ -865,6 +880,7 @@ function extractDocMetadata(allRuns) {
         }
     }
 
+    meta.weekNum = getWeekNumberFromDoc(meta, allRuns);
     return meta;
 }
 
@@ -936,11 +952,24 @@ function parseWeeklyScheduleFromRuns(allRuns, docMetadata) {
                     docMetadata.startDate = new Date(fY, fM - 1, fD);
                 }
 
+                const dayPage = r.p;
+                let dayStartIdx = idx;
+                for (let k = 0; k < allRuns.length; k++) {
+                    if (allRuns[k].p === dayPage) {
+                        const txt = allRuns[k].text.trim();
+                        if (txt.includes("Tổ Cảnh sát") || txt.includes("Tổ CSGT")) continue;
+                        if (/^Tổ\s*1\b/i.test(txt) || (txt.toLowerCase() === "tổ" && allRuns[k + 1]?.text.trim() === "1")) {
+                            dayStartIdx = k;
+                            break;
+                        }
+                    }
+                }
+
                 dayIndices.push({
                     dayIndex: currentTargetIdx,
                     day: target.name,
                     date: foundDate,
-                    startIdx: idx
+                    startIdx: dayStartIdx
                 });
 
                 currentTargetIdx++;
@@ -1038,8 +1067,8 @@ function parseWeeklyScheduleFromRuns(allRuns, docMetadata) {
 
             officersList.forEach(off => {
                 const words = off.trim().split(/\s+/);
-                const pattern = new RegExp('\\b' + words.map(w => escapeRegExp(w)).join('\\s+') + '\\b', 'i');
-                const isVoHoangTuan = off.includes("Võ Hoàng Tuấn") && /\b(Võ|Vơ)\s+Hoàng\s+Tuấn\b/i.test(col2Str);
+                const pattern = new RegExp('(?:(?<!\\p{L})|(?<=Đ\\/c))' + words.map(w => escapeRegExp(w)).join('\\s*') + '(?!\\p{L})', 'iu');
+                const isVoHoangTuan = off.includes("Võ Hoàng Tuấn") && /(?:(?<!\p{L})|(?<=Đ\/c))(?:Võ|Vơ)\s*Hoàng\s*Tuấn(?!\p{L})/iu.test(col2Str);
 
                 if (pattern.test(col2Str) || isVoHoangTuan) {
                     matchedOfficers.push(off);
